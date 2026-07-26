@@ -1,0 +1,23 @@
+{
+  "name": "worker-portal-jul26-",
+  "version": "1.0.0",
+  "description": "COREIN Worker Portal - React dashboard with dual-input anti-idle tracking",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.4",
+    "firebase": "^12.16.0",
+    "lucide-react": "^1.27.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.1.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}
