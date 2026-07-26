@@ -1,23 +1,26 @@
 {
-  "name": "worker-portal-jul26-",
-  "version": "1.0.0",
-  "description": "COREIN Worker Portal - React dashboard with dual-input anti-idle tracking",
+  "name": "corein-worker-portal",
+  "version": "2.0.0",
+  "description": "COREIN Worker Portal - Production React dashboard with API backend, JWT auth, dual-input anti-idle tracking, and full admin panel",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server.js",
+    "start": "vite build && node server.js"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^6.0.4",
-    "firebase": "^12.16.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^1.27.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "vite": "^8.1.5"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "tailwindcss": "^4.3.3"
+    "@vitejs/plugin-react": "^6.0.4",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.1.5"
   }
 }
