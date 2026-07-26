@@ -73,8 +73,9 @@ function logSecurity(req, event) {
   console.log(`[SECURITY] ${event} - User: ${req.user?.id || 'anon'}`);
 }
 
+let _currentOrigin = '*';
 function json(res, status, data) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': 'http://localhost:5173', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS' });
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': _currentOrigin, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS' });
   res.end(JSON.stringify(data));
 }
 
@@ -85,13 +86,14 @@ function html(res, status, data) {
 
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, { 'Access-Control-Allow-Origin': 'http://localhost:5173', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS' });
+    res.writeHead(204, { 'Access-Control-Allow-Origin': req.headers.origin || '*', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS' });
     return res.end();
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
   const cookies = parseCookies(req);
+  _currentOrigin = req.headers.origin || '*';
 
   let body = {};
   if (req.method === 'POST' || req.method === 'PUT') {
