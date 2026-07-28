@@ -16,7 +16,7 @@ export default function MyTasks({ tasks, isAdmin, onView, onDelete, darkMode }) 
             <div className="flex items-center gap-2">
               <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${task.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'Submitted' ? 'bg-purple-100 text-purple-700' : task.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{task.status}</span>
               <button onClick={() => onView(task)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><Eye className="w-3.5 h-3.5 text-slate-500" /></button>
-              {!isAdmin && <button onClick={() => onDelete(task)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>}
+              {isAdmin && <button onClick={() => onDelete(task)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>}
             </div>
           </div>
         ))}

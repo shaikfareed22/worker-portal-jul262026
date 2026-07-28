@@ -11,9 +11,8 @@ import RegisterPage from './components/auth/RegisterPage';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import ConfirmDialog from './components/ui/ConfirmDialog';
 import Notification from './components/ui/Notification';
-import TrackerBanner from './components/tracker/TrackerBanner';
 import TaskSubmitModal from './components/tasks/TaskSubmitModal';
-import TaskDetail from './components/tasks/TaskDetail';
+import TaskExecution from './components/tasks/TaskExecution';
 
 import Dashboard from './pages/Dashboard';
 import MyTasks from './pages/MyTasks';
@@ -34,7 +33,7 @@ import { clearStorage } from './utils/storage';
 
 export default function App() {
   const { user, loading: authLoading, error: authError, login, register, logout, isAdmin, isWorker } = useAuth();
-  const { tasks, loading: tasksLoading, createTask, updateStatus, submitTask, reviewTask, deleteTask } = useTaskManager();
+  const { tasks, loading: tasksLoading, createTask, updateStatus, startTask, submitTask, reviewTask, deleteTask } = useTaskManager();
   const { darkMode, toggle: toggleDark } = useDarkMode();
   const { notification, show: showNotif, clear: clearNotif } = useNotification();
 
@@ -47,21 +46,24 @@ export default function App() {
   const [isPaused, setIsPaused] = useState(false);
   const [submittingTask, setSubmittingTask] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [executingTask, setExecutingTask] = useState(null);
   const [confirmDlg, setConfirmDlg] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'danger' });
 
   const { taskActiveSeconds, setTaskActiveSeconds, taskTotalElapsed, setTaskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive } = useTimeTracker(activeTaskId, isTracking, isPaused);
 
-  const myTasks = useMemo(() => isAdmin ? tasks : tasks.filter((t) => t.assignedTo === user?.id || t.createdBy === user?.id), [tasks, isAdmin, user]);
+  const myTasks = useMemo(() => isAdmin ? tasks : tasks.filter((t) => t.assignedTo === user?.id || !t.assignedTo), [tasks, isAdmin, user]);
   const pendingCount = useMemo(() => myTasks.filter((t) => t.status !== 'Completed' && t.status !== 'Submitted').length, [myTasks]);
   const activeTask = useMemo(() => myTasks.find((t) => t.id === activeTaskId), [myTasks, activeTaskId]);
 
-  const handleStart = useCallback((task) => {
+  const handleStart = useCallback(async (task) => {
     if (activeTaskId && activeTaskId !== task.id) { showNotif('Complete current task first.'); return; }
-    setActiveTaskId(task.id);
-    setIsTracking(true);
-    setIsPaused(false);
-    updateStatus(task.id, 'In Progress').catch(() => {});
-  }, [activeTaskId, showNotif, updateStatus]);
+    try {
+      await startTask(task.id);
+      setActiveTaskId(task.id);
+      setIsTracking(true);
+      setIsPaused(false);
+    } catch (err) { showNotif('Failed to start task: ' + err.message); }
+  }, [activeTaskId, showNotif, startTask]);
 
   const handlePause = useCallback(() => setIsPaused((p) => !p), []);
 
@@ -75,6 +77,7 @@ export default function App() {
       await submitTask(taskId, submission);
       showNotif('Task submitted!');
       setSubmittingTask(null);
+      setExecutingTask(null);
       if (activeTaskId === taskId) { setActiveTaskId(null); setIsTracking(false); }
     } catch (err) { showNotif('Submission failed: ' + err.message); }
   }, [submitTask, activeTaskId, showNotif]);
@@ -97,6 +100,14 @@ export default function App() {
     });
   }, [deleteTask, showNotif]);
 
+  const handleViewTask = useCallback((task) => {
+    if (isAdmin) {
+      setSelectedTask(task);
+    } else {
+      setExecutingTask(task);
+    }
+  }, [isAdmin]);
+
   if (!user) {
     return (
       <ErrorBoundary>
@@ -112,35 +123,85 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Layout user={user} isAdmin={isAdmin} activeNav={activeNav} setActiveNav={setActiveNav} darkMode={darkMode} toggleDark={toggleDark} onLogout={logout} taskCount={pendingCount}>
-        {activeTaskId && isTracking && (
-          <TrackerBanner task={activeTask} taskActiveSeconds={taskActiveSeconds} isKeyboardActive={isKeyboardActive} isMouseActive={isMouseActive} isDualInputActive={isDualInputActive} isPaused={isPaused} onPause={handlePause} onSubmit={handleOpenSubmit} />
+        {isAdmin && activeTaskId && isTracking && (
+          <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl border border-slate-800 flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${isDualInputActive ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+              <div><span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Working On</span><h2 className="text-sm font-bold text-white">{activeTask?.title}</h2></div>
+            </div>
+            <span className="text-lg font-mono font-bold text-emerald-400">{formatSecondsToTime(taskActiveSeconds?.[activeTaskId] || 0)}</span>
+          </div>
         )}
 
         <Notification message={notification} onClear={clearNotif} />
 
-        {activeNav === 'Dashboard' && <Dashboard {...pageProps} onView={setSelectedTask} onNavigate={setActiveNav} searchQ={searchQ} setSearchQ={setSearchQ} taskFilter={taskFilter} setTaskFilter={setTaskFilter} />}
-        {activeNav === 'My Tasks' && <MyTasks tasks={myTasks} isAdmin={isAdmin} onView={setSelectedTask} onDelete={handleDelete} darkMode={darkMode} />}
-        {activeNav === 'Active Tasks' && <ActiveTasks tasks={myTasks} taskActiveSeconds={taskActiveSeconds} onSubmit={handleOpenSubmit} />}
-        {activeNav === 'Completed Tasks' && <CompletedTasks tasks={myTasks} />}
-        {activeNav === 'Admin Portal' && isAdmin && <AdminPortal tasks={tasks} onCreateTask={handleCreateTask} onReview={handleReview} darkMode={darkMode} />}
-        {activeNav === 'Workers' && isAdmin && <Workers darkMode={darkMode} />}
-        {activeNav === 'Audit Log' && isAdmin && <AuditLog darkMode={darkMode} />}
-        {activeNav === 'Time Tracker' && <TimeTracker tasks={myTasks} taskActiveSeconds={taskActiveSeconds} taskTotalElapsed={taskTotalElapsed} user={user} darkMode={darkMode} />}
-        {activeNav === 'Earnings' && <Earnings tasks={myTasks} user={user} darkMode={darkMode} />}
-        {activeNav === 'Payouts' && <Payouts tasks={myTasks} darkMode={darkMode} />}
-        {activeNav === 'Invoices' && <Invoices tasks={myTasks} darkMode={darkMode} />}
-        {activeNav === 'Profile' && <Profile user={user} tasks={myTasks} darkMode={darkMode} />}
-        {activeNav === 'Support' && <Support darkMode={darkMode} onNotify={showNotif} />}
-        {activeNav === 'Settings' && <SettingsPage darkMode={darkMode} toggleDark={toggleDark} onClearData={() => { clearStorage(); window.location.reload(); }} />}
+        {executingTask ? (
+          <TaskExecution
+            task={tasks.find((t) => t.id === executingTask.id) || executingTask}
+            onStart={handleStart}
+            onSubmit={handleSubmitConfirm}
+            onBack={() => setExecutingTask(null)}
+            isTracking={isTracking && activeTaskId === executingTask.id}
+            taskActiveSeconds={taskActiveSeconds}
+            darkMode={darkMode}
+          />
+        ) : (
+          <>
+            {activeNav === 'Dashboard' && <Dashboard {...pageProps} onView={handleViewTask} onNavigate={setActiveNav} searchQ={searchQ} setSearchQ={setSearchQ} taskFilter={taskFilter} setTaskFilter={setTaskFilter} />}
+            {activeNav === 'My Tasks' && <MyTasks tasks={myTasks} isAdmin={isAdmin} onView={handleViewTask} onDelete={handleDelete} darkMode={darkMode} />}
+            {activeNav === 'Active Tasks' && <ActiveTasks tasks={myTasks} taskActiveSeconds={taskActiveSeconds} onSubmit={handleOpenSubmit} />}
+            {activeNav === 'Completed Tasks' && <CompletedTasks tasks={myTasks} />}
+            {activeNav === 'Admin Portal' && isAdmin && <AdminPortal tasks={tasks} onCreateTask={handleCreateTask} onReview={handleReview} darkMode={darkMode} />}
+            {activeNav === 'Workers' && isAdmin && <Workers darkMode={darkMode} />}
+            {activeNav === 'Audit Log' && isAdmin && <AuditLog darkMode={darkMode} />}
+            {activeNav === 'Time Tracker' && <TimeTracker tasks={myTasks} taskActiveSeconds={taskActiveSeconds} taskTotalElapsed={taskTotalElapsed} user={user} darkMode={darkMode} />}
+            {activeNav === 'Earnings' && <Earnings tasks={myTasks} user={user} darkMode={darkMode} />}
+            {activeNav === 'Payouts' && <Payouts tasks={myTasks} darkMode={darkMode} />}
+            {activeNav === 'Invoices' && <Invoices tasks={myTasks} darkMode={darkMode} />}
+            {activeNav === 'Profile' && <Profile user={user} tasks={myTasks} darkMode={darkMode} />}
+            {activeNav === 'Support' && <Support darkMode={darkMode} onNotify={showNotif} />}
+            {activeNav === 'Settings' && <SettingsPage darkMode={darkMode} toggleDark={toggleDark} onClearData={() => { clearStorage(); window.location.reload(); }} />}
+          </>
+        )}
       </Layout>
 
       {submittingTask && (
         <TaskSubmitModal task={submittingTask} taskActiveSeconds={taskActiveSeconds} taskTotalElapsed={taskTotalElapsed} onSubmit={handleSubmitConfirm} onClose={() => setSubmittingTask(null)} />
       )}
 
-      {selectedTask && <TaskDetail task={selectedTask} darkMode={darkMode} onClose={() => setSelectedTask(null)} />}
+      {selectedTask && isAdmin && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedTask(null)}>
+          <div className={`rounded-2xl max-w-2xl w-full p-6 shadow-2xl border max-h-[80vh] overflow-y-auto ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-4">
+              <div><span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">DETAILS</span><h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{selectedTask.title}</h3><p className="text-xs text-slate-500">{selectedTask.id} &middot; {selectedTask.project}</p></div>
+              <button onClick={() => setSelectedTask(null)} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              {[{ l: 'Status', v: selectedTask.status }, { l: 'Priority', v: selectedTask.priority }, { l: 'Rate', v: selectedTask.rate }, { l: 'Due', v: selectedTask.dueDate }].map((s, i) => (
+                <div key={i} className="p-2 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-[10px] text-slate-500 uppercase">{s.l}</p><p className="text-xs font-bold text-slate-900 dark:text-white">{s.v}</p></div>
+              ))}
+            </div>
+            <div className="mb-4"><p className="text-xs font-semibold text-slate-500 mb-1">Description</p><p className="text-sm text-slate-700 dark:text-slate-300">{selectedTask.description}</p></div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-[10px] text-slate-500 uppercase">Logged Time</p><p className="text-sm font-mono font-bold text-slate-900 dark:text-white">{selectedTask.loggedTime || '0h 00m'}</p></div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-[10px] text-slate-500 uppercase">Total Time Spent</p><p className="text-sm font-mono font-bold text-slate-900 dark:text-white">{selectedTask.timeSpent ? formatSecondsToTime(selectedTask.timeSpent) : 'N/A'}</p></div>
+            </div>
+            {selectedTask.submittedCode && <div className="mb-4"><p className="text-xs font-semibold text-slate-500 mb-1">Deliverable</p><pre className="p-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto">{selectedTask.submittedCode}</pre></div>}
+            {selectedTask.submittedNotes && <div className="mb-4"><p className="text-xs font-semibold text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-600 dark:text-slate-400">{selectedTask.submittedNotes}</p></div>}
+            {selectedTask.reviewStatus && <div className={`p-3 rounded-xl mb-4 ${selectedTask.reviewStatus === 'Approved' ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}><p className="text-xs font-bold">{selectedTask.reviewStatus}</p>{selectedTask.reviewComment && <p className="text-xs text-slate-600 mt-1">{selectedTask.reviewComment}</p>}</div>}
+            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-700"><button onClick={() => setSelectedTask(null)} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-white text-xs font-semibold rounded-xl">Close</button></div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog {...confirmDlg} />
     </ErrorBoundary>
   );
+}
+
+function formatSecondsToTime(totalSecs = 0) {
+  const hrs = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }

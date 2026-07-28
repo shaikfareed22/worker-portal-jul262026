@@ -32,6 +32,12 @@ export function useTaskManager() {
     return task;
   }, []);
 
+  const startTask = useCallback(async (id) => {
+    const { task } = await api.startTask(id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
+    return task;
+  }, []);
+
   const submitTask = useCallback(async (id, submission) => {
     const { task } = await api.submitTask(id, submission);
     setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
@@ -49,5 +55,5 @@ export function useTaskManager() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  return { tasks, loading, error, fetchTasks, createTask, updateStatus, submitTask, reviewTask, deleteTask };
+  return { tasks, loading, error, fetchTasks, createTask, updateStatus, startTask, submitTask, reviewTask, deleteTask };
 }

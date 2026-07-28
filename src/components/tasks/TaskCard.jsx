@@ -2,7 +2,7 @@ import React from 'react';
 import { Play, CheckCircle2, Eye } from 'lucide-react';
 import { formatShortTime } from '../../utils/formatters';
 
-export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSubmit, onView, onDelete, darkMode, activeSeconds }) {
+export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSubmit, onView, darkMode, activeSeconds, isAdmin }) {
   const tId = task.id;
   const isCurrentActive = activeTaskId === tId && isTracking;
   const secs = activeSeconds || task.activeSecondsLogged || 0;
@@ -17,7 +17,8 @@ export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSu
           <div className="flex items-center gap-2 pt-1 flex-wrap">
             <span className="text-[11px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-mono">{task.id}</span>
             <span className="text-[11px] font-semibold text-emerald-600">{task.rate}</span>
-            <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{formatShortTime(secs)}</span>
+            {isAdmin && task.timeSpent > 0 && <span className="text-[11px] font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Total: {formatShortTime(task.timeSpent)}</span>}
+            {!isAdmin && secs > 0 && <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{formatShortTime(secs)}</span>}
             <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${task.priority === 'High' ? 'bg-red-100 text-red-600' : task.priority === 'Medium' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>{task.priority}</span>
           </div>
         </div>
@@ -27,8 +28,8 @@ export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSu
         {task.status !== 'Submitted' && task.status !== 'Completed' && (
           <>
             {!isCurrentActive ? (
-              <button onClick={() => onStart(task)} className="text-xs px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center gap-1 shadow-sm transition">
-                <Play className="w-3.5 h-3.5 fill-current" /><span>Start</span>
+              <button onClick={() => onView(task)} className="text-xs px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center gap-1 shadow-sm transition">
+                <Eye className="w-3.5 h-3.5" /><span>View Task</span>
               </button>
             ) : (
               <button onClick={() => onSubmit(task)} className="text-xs px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center gap-1 shadow-sm transition">

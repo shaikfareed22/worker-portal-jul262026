@@ -34,6 +34,7 @@ export const api = {
   getTasks: () => request('/api/tasks'),
   createTask: (task) => request('/api/tasks', { method: 'POST', body: task }),
   updateTaskStatus: (id, status) => request(`/api/tasks/${id}/status`, { method: 'PUT', body: { status } }),
+  startTask: (id) => request(`/api/tasks/${id}/start`, { method: 'POST' }),
   submitTask: (id, submission) => request(`/api/tasks/${id}/submit`, { method: 'POST', body: submission }),
   reviewTask: (id, review) => request(`/api/tasks/${id}/review`, { method: 'POST', body: review }),
   deleteTask: (id) => request(`/api/tasks/${id}`, { method: 'DELETE' }),

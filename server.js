@@ -53,9 +53,9 @@ const USERS_DB = [
 ];
 
 let tasks = [
-  { id: 'PY-001', type: 'CODE', title: 'Python Hello World', project: 'Python Starter Project', status: 'Not Started', loggedTime: '0h 00m', activeSecondsLogged: 0, dueDate: 'Jul 30, 2026', category: 'Active', priority: 'High', rate: '$25/hr', rateNum: 25, description: 'Write a clean Python script that prints "Hello World".', assignedTo: 'worker-001', createdBy: 'admin-001', createdAt: '2026-07-20', submittedCode: '', submittedNotes: '', submittedAt: '', submittedFiles: [], reviewStatus: '', reviewComment: '' },
-  { id: 'DATA-002', type: 'DATA', title: 'Data Entry Validation', project: 'Healthcare Records', status: 'In Progress', loggedTime: '0h 45m', activeSecondsLogged: 2700, dueDate: 'Aug 05, 2026', category: 'Active', priority: 'Medium', rate: '$22/hr', rateNum: 22, description: 'Validate and clean patient data entries.', assignedTo: 'worker-001', createdBy: 'admin-001', createdAt: '2026-07-18', submittedCode: '', submittedNotes: '', submittedAt: '', submittedFiles: [], reviewStatus: '', reviewComment: '' },
-  { id: 'TEXT-003', type: 'TEXT', title: 'Content Review Q3', project: 'Marketing Copy', status: 'Submitted', loggedTime: '2h 15m', activeSecondsLogged: 8100, dueDate: 'Jul 28, 2026', category: 'Submitted', priority: 'Low', rate: '$20/hr', rateNum: 20, description: 'Review and proofread Q3 marketing copy.', assignedTo: 'worker-001', createdBy: 'admin-001', createdAt: '2026-07-15', submittedCode: 'Review complete. Found 12 grammar issues, all corrected.', submittedNotes: 'Passed QA check.', submittedAt: '2026-07-25T10:30:00', submittedFiles: [], reviewStatus: '', reviewComment: '' },
+  { id: 'PY-001', type: 'CODE', title: 'Python Hello World', project: 'Python Starter Project', status: 'Not Started', loggedTime: '0h 00m', activeSecondsLogged: 0, idleTime: 0, startedAt: '', timeSpent: 0, dueDate: 'Jul 30, 2026', category: 'Active', priority: 'High', rate: '$25/hr', rateNum: 25, description: 'Write a clean Python script that prints "Hello World".', assignedTo: 'worker-001', createdBy: 'admin-001', createdAt: '2026-07-20', submittedCode: '', submittedNotes: '', submittedAt: '', submittedFiles: [], reviewStatus: '', reviewComment: '' },
+  { id: 'DATA-002', type: 'DATA', title: 'Data Entry Validation', project: 'Healthcare Records', status: 'In Progress', loggedTime: '0h 45m', activeSecondsLogged: 2700, idleTime: 2700, startedAt: '2026-07-18T09:00:00', timeSpent: 5400, dueDate: 'Aug 05, 2026', category: 'Active', priority: 'Medium', rate: '$22/hr', rateNum: 22, description: 'Validate and clean patient data entries.', assignedTo: 'worker-001', createdBy: 'admin-001', createdAt: '2026-07-18', submittedCode: '', submittedNotes: '', submittedAt: '', submittedFiles: [], reviewStatus: '', reviewComment: '' },
+  { id: 'TEXT-003', type: 'TEXT', title: 'Content Review Q3', project: 'Marketing Copy', status: 'Submitted', loggedTime: '2h 15m', activeSecondsLogged: 8100, idleTime: 900, startedAt: '2026-07-15T08:00:00', timeSpent: 9000, dueDate: 'Jul 28, 2026', category: 'Submitted', priority: 'Low', rate: '$20/hr', rateNum: 20, description: 'Review and proofread Q3 marketing copy.', assignedTo: 'worker-001', createdBy: 'admin-001', createdAt: '2026-07-15', submittedCode: 'Review complete. Found 12 grammar issues, all corrected.', submittedNotes: 'Passed QA check.', submittedAt: '2026-07-25T10:30:00', submittedFiles: [], reviewStatus: '', reviewComment: '' },
 ];
 
 let auditLog = [];
@@ -162,7 +162,7 @@ const server = http.createServer(async (req, res) => {
 
   // --- TASK ROUTES ---
   if (pathname === '/api/tasks' && req.method === 'GET') {
-    const result = currentUser?.role === 'admin' ? tasks : tasks.filter((t) => t.assignedTo === userId || t.createdBy === userId);
+    const result = currentUser?.role === 'admin' ? tasks : tasks.filter((t) => t.assignedTo === userId || !t.assignedTo);
     return json(res, 200, { tasks: result });
   }
 
@@ -170,7 +170,7 @@ const server = http.createServer(async (req, res) => {
     if (!currentUser || currentUser.role !== 'admin') return json(res, 403, { error: 'Admin access required' });
     const { title, project, type, priority, rate, rateNum, dueDate, description, assignedTo } = body;
     if (!title || !project) return json(res, 400, { error: 'Title and project required' });
-    const task = { id: `${type || 'TASK'}-${Date.now().toString(36).toUpperCase()}`, type: type || 'CODE', title: title.slice(0, 200), project: project.slice(0, 200), status: 'Not Started', loggedTime: '0h 00m', activeSecondsLogged: 0, dueDate: dueDate || 'Aug 15, 2026', category: 'Active', priority: priority || 'Medium', rate: rate || '$25/hr', rateNum: rateNum || 25, description: (description || '').slice(0, 2000), assignedTo: assignedTo || null, createdBy: userId, createdAt: new Date().toISOString(), submittedCode: '', submittedNotes: '', submittedAt: '', submittedFiles: [], reviewStatus: '', reviewComment: '' };
+    const task = { id: `${type || 'TASK'}-${Date.now().toString(36).toUpperCase()}`, type: type || 'CODE', title: title.slice(0, 200), project: project.slice(0, 200), status: 'Not Started', loggedTime: '0h 00m', activeSecondsLogged: 0, idleTime: 0, startedAt: '', timeSpent: 0, dueDate: dueDate || 'Aug 15, 2026', category: 'Active', priority: priority || 'Medium', rate: rate || '$25/hr', rateNum: rateNum || 25, description: (description || '').slice(0, 2000), assignedTo: assignedTo || null, createdBy: userId, createdAt: new Date().toISOString(), submittedCode: '', submittedNotes: '', submittedAt: '', submittedFiles: [], reviewStatus: '', reviewComment: '' };
     tasks.unshift(task);
     addAudit('task_created', `Created: ${task.title}`, userId);
     return json(res, 200, { task });
@@ -199,6 +199,20 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { task });
   }
 
+  const startMatch = pathname.match(/^\/api\/tasks\/([^/]+)\/start$/);
+  if (startMatch && req.method === 'POST') {
+    const task = tasks.find((t) => t.id === startMatch[1]);
+    if (!task) return json(res, 404, { error: 'Not found' });
+    if (currentUser?.role === 'worker' && task.assignedTo !== userId && task.assignedTo !== null) return json(res, 403, { error: 'Not your task' });
+    if (!task.startedAt) {
+      task.startedAt = new Date().toISOString();
+    }
+    task.status = 'In Progress';
+    task.category = 'In Progress';
+    addAudit('task_started', `Started: ${task.title}`, userId);
+    return json(res, 200, { task });
+  }
+
   const submitMatch = pathname.match(/^\/api\/tasks\/([^/]+)\/submit$/);
   if (submitMatch && req.method === 'POST') {
     const task = tasks.find((t) => t.id === submitMatch[1]);
@@ -212,6 +226,10 @@ const server = http.createServer(async (req, res) => {
     task.submittedAt = new Date().toISOString();
     task.activeSecondsLogged = body.activeSecondsLogged || 0;
     task.loggedTime = body.loggedTime || task.loggedTime;
+    if (task.startedAt) {
+      task.timeSpent = Math.floor((Date.now() - new Date(task.startedAt).getTime()) / 1000);
+      task.idleTime = Math.max(0, task.timeSpent - task.activeSecondsLogged);
+    }
     addAudit('task_submitted', `Submitted: ${task.title} (${task.loggedTime})`, userId);
     return json(res, 200, { task });
   }

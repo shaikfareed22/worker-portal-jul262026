@@ -11,7 +11,6 @@ export default function Sidebar({ user, isAdmin, activeNav, setActiveNav, mobile
         { name: 'Completed Tasks', icon: CheckCircle2 },
       ]},
       { title: 'TIME & EARNINGS', items: [
-        { name: 'Time Tracker', icon: Clock },
         { name: 'Earnings', icon: DollarSign },
         { name: 'Payouts', icon: Wallet },
         { name: 'Invoices', icon: FileText },
