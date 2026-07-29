@@ -51,9 +51,10 @@ export default function App() {
 
   const { taskActiveSeconds, setTaskActiveSeconds, taskTotalElapsed, setTaskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive } = useTimeTracker(activeTaskId, isTracking, isPaused);
 
-  const myTasks = useMemo(() => isAdmin ? tasks : tasks.filter((t) => t.assignedTo === user?.id || !t.assignedTo), [tasks, isAdmin, user]);
-  const pendingCount = useMemo(() => myTasks.filter((t) => t.status !== 'Completed' && t.status !== 'Submitted').length, [myTasks]);
-  const activeTask = useMemo(() => myTasks.find((t) => t.id === activeTaskId), [myTasks, activeTaskId]);
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const myTasks = useMemo(() => isAdmin ? safeTasks : safeTasks.filter((t) => t.assignedTo === user?.id || !t.assignedTo), [safeTasks, isAdmin, user]);
+  const pendingCount = useMemo(() => (Array.isArray(myTasks) ? myTasks : []).filter((t) => t.status !== 'Completed' && t.status !== 'Submitted').length, [myTasks]);
+  const activeTask = useMemo(() => (Array.isArray(myTasks) ? myTasks : []).find((t) => t.id === activeTaskId), [myTasks, activeTaskId]);
 
   const handleStart = useCallback(async (task) => {
     if (activeTaskId && activeTaskId !== task.id) { showNotif('Complete current task first.'); return; }

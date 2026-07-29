@@ -6,10 +6,11 @@ import { formatDateTime, formatShortTime, calculateEarnings } from '../utils/for
 
 export default function AdminPortal({ tasks, onCreateTask, onReview, darkMode }) {
   const [submissions, setSubmissions] = useState([]);
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
 
   useEffect(() => {
-    setSubmissions(tasks.filter((t) => t.status === 'Submitted'));
-  }, [tasks]);
+    setSubmissions(safeTasks.filter((t) => t.status === 'Submitted'));
+  }, [safeTasks]);
 
   return (
     <div className="space-y-6">
@@ -64,7 +65,7 @@ export default function AdminPortal({ tasks, onCreateTask, onReview, darkMode })
               <th className="text-left py-2 font-semibold text-slate-500">Earnings</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {tasks.map((task) => {
+            {safeTasks.map((task) => {
                 const active = task.activeSecondsLogged || 0;
                 const idle = task.idleTime || 0;
                 const total = task.timeSpent || 0;

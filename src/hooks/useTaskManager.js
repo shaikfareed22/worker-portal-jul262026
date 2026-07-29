@@ -10,7 +10,7 @@ export function useTaskManager() {
     try {
       setLoading(true);
       const { tasks: t } = await api.getTasks();
-      setTasks(t);
+      setTasks(Array.isArray(t) ? t : []);
     } catch (err) {
       setError(err.message);
     } finally {

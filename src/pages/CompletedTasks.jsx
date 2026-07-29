@@ -2,7 +2,8 @@ import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function CompletedTasks({ tasks }) {
-  const completed = tasks.filter((t) => t.status === 'Completed');
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const completed = safeTasks.filter((t) => t.status === 'Completed');
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm">
       <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Completed ({completed.length})</h2>

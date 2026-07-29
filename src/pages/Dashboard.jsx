@@ -6,19 +6,20 @@ import TaskCard from '../components/tasks/TaskCard';
 import { formatShortTime } from '../utils/formatters';
 
 export default function Dashboard({ tasks, user, isAdmin, activeTaskId, isTracking, taskActiveSeconds, isKeyboardActive, isMouseActive, isDualInputActive, onStart, onSubmit, onView, onNavigate, darkMode, searchQ, setSearchQ, taskFilter, setTaskFilter }) {
-  const pending = tasks.filter((t) => t.status !== 'Completed' && t.status !== 'Submitted').length;
-  const totalActSecs = Object.values(taskActiveSeconds).reduce((a, b) => a + b, 0);
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const pending = safeTasks.filter((t) => t.status !== 'Completed' && t.status !== 'Submitted').length;
+  const totalActSecs = Object.values(taskActiveSeconds || {}).reduce((a, b) => a + b, 0);
   const totalEarn = ((totalActSecs / 3600) * (user?.rate || 25)).toFixed(2);
 
   const filteredTasks = useMemo(() => {
-    let r = tasks;
+    let r = safeTasks;
     if (searchQ) { const q = searchQ.toLowerCase(); r = r.filter((t) => t.title.toLowerCase().includes(q) || t.project.toLowerCase().includes(q)); }
     if (taskFilter === 'Active') return r.filter((t) => t.status !== 'Completed' && t.status !== 'Submitted');
     if (taskFilter === 'In Progress') return r.filter((t) => t.status === 'In Progress');
     if (taskFilter === 'Submitted') return r.filter((t) => t.status === 'Submitted');
     if (taskFilter === 'Completed') return r.filter((t) => t.status === 'Completed');
     return r;
-  }, [tasks, taskFilter, searchQ]);
+  }, [safeTasks, taskFilter, searchQ]);
 
   return (
     <>

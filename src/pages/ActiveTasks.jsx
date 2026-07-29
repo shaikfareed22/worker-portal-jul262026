@@ -2,7 +2,8 @@ import React from 'react';
 import { formatShortTime } from '../utils/formatters';
 
 export default function ActiveTasks({ tasks, taskActiveSeconds, onSubmit }) {
-  const active = tasks.filter((t) => t.status === 'In Progress');
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const active = safeTasks.filter((t) => t.status === 'In Progress');
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm">
       <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Active Tasks</h2>

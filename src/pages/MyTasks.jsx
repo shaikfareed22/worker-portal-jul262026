@@ -3,11 +3,12 @@ import { Eye, Trash2 } from 'lucide-react';
 import SearchBar from '../components/shared/SearchBar';
 
 export default function MyTasks({ tasks, isAdmin, onView, onDelete, darkMode }) {
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
   return (
     <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-2xl border p-6 shadow-sm`}>
-      <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">All Tasks ({tasks.length})</h2>
+      <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">All Tasks ({safeTasks.length})</h2>
       <div className="divide-y divide-slate-100 dark:divide-slate-700">
-        {tasks.map((task) => (
+        {safeTasks.map((task) => (
           <div key={task.id} className="py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10px]">{task.type}</span>
