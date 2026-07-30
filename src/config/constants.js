@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL || '';
+export const API_URL = '';
 
 export const TASK_TYPES = ['CODE', 'TEXT', 'DATA', 'DESIGN'];
 export const PRIORITIES = ['High', 'Medium', 'Low'];

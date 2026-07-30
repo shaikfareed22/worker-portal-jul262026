@@ -1,23 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { api } from '../utils/api';
-import { STORAGE_KEYS } from '../config/constants';
-import { loadFromStorage, saveToStorage, removeFromStorage } from '../utils/storage';
 
 export function useAuth() {
-  const [user, setUser] = useState(() => loadFromStorage(STORAGE_KEYS.USER, null));
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      api.me().then(({ user: u }) => {
-        setUser(u);
-        saveToStorage(STORAGE_KEYS.USER, u);
-      }).catch(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            setUser({ id: firebaseUser.uid, ...userDoc.data() });
+          } else {
+            setUser({ id: firebaseUser.uid, name: firebaseUser.displayName || 'User', email: firebaseUser.email, role: 'worker', avatar: 'U', rate: 20, joinedAt: new Date().toISOString().split('T')[0] });
+          }
+        } catch {
+          setUser(null);
+        }
+      } else {
         setUser(null);
-        removeFromStorage(STORAGE_KEYS.USER);
-      });
-    }
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -26,7 +36,6 @@ export function useAuth() {
     try {
       const { user: u } = await api.login(email, password);
       setUser(u);
-      saveToStorage(STORAGE_KEYS.USER, u);
       return u;
     } catch (err) {
       setError(err.message);
@@ -42,7 +51,6 @@ export function useAuth() {
     try {
       const { user: u } = await api.register(name, email, password);
       setUser(u);
-      saveToStorage(STORAGE_KEYS.USER, u);
       return u;
     } catch (err) {
       setError(err.message);
@@ -55,7 +63,6 @@ export function useAuth() {
   const logout = useCallback(async () => {
     try { await api.logout(); } catch {}
     setUser(null);
-    removeFromStorage(STORAGE_KEYS.USER);
     window.location.reload();
   }, []);
 

@@ -4,7 +4,10 @@ import { api } from '../utils/api';
 
 export default function Workers({ darkMode }) {
   const [workers, setWorkers] = useState([]);
-  useEffect(() => { api.getWorkers().then(({ workers }) => setWorkers(workers)).catch(() => {}); }, []);
+  useEffect(() => {
+    const unsub = api.subscribeToWorkers(setWorkers);
+    return unsub;
+  }, []);
 
   return (
     <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-2xl border p-6 shadow-sm`}>

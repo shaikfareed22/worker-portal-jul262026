@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
 import { DUAL_IDLE_CUTOFF_MS } from '../config/constants';
 
@@ -70,16 +70,6 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
     }, 5000);
     return () => clearInterval(iv);
   }, [isTracking, activeTaskId, isPaused]);
-
-  useEffect(() => {
-    const h = () => {
-      if (document.hidden && isTracking && !isPaused) {
-        document.dispatchEvent(new CustomEvent('tracker-pause'));
-      }
-    };
-    document.addEventListener('visibilitychange', h);
-    return () => document.removeEventListener('visibilitychange', h);
-  }, [isTracking, isPaused]);
 
   return { taskActiveSeconds, setTaskActiveSeconds, taskTotalElapsed, setTaskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive };
 }

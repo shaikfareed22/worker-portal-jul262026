@@ -5,7 +5,10 @@ import { formatDateTime } from '../utils/formatters';
 
 export default function AuditLog({ darkMode }) {
   const [log, setLog] = useState([]);
-  useEffect(() => { api.getAuditLog().then(({ auditLog }) => setLog(auditLog)).catch(() => {}); }, []);
+  useEffect(() => {
+    const unsub = api.subscribeToAuditLog(setLog);
+    return unsub;
+  }, []);
 
   const icons = { task_created: 'Plus', task_started: 'Play', task_submitted: 'Send', task_completed: 'Check', task_deleted: 'Trash', task_reviewed: 'Edit', login: 'Login', task_updated: 'Update' };
 

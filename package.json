@@ -1,18 +1,16 @@
 {
   "name": "corein-worker-portal",
-  "version": "2.0.0",
-  "description": "COREIN Worker Portal - Production React dashboard with API backend, JWT auth, dual-input anti-idle tracking, and full admin panel",
+  "version": "3.0.0",
+  "description": "COREIN Worker Portal - Firebase-powered React dashboard with Firestore real-time sync, Firebase Auth, dual-input anti-idle tracking, and full admin panel",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node server.js",
-    "start": "vite build && node server.js"
+    "start": "vite build && vite preview"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
+    "firebase": "^11.8.1",
     "lucide-react": "^1.27.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
