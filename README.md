@@ -1,6 +1,6 @@
-# COREIN Worker Portal v2.0
+# COREIN Worker Portal v3.0
 
-Production-ready React dashboard with API backend, JWT auth, dual-input anti-idle tracking, full admin panel, and task execution workflow.
+Production-ready React dashboard powered by **Firebase** — no server required.
 
 ---
 
@@ -9,68 +9,51 @@ Production-ready React dashboard with API backend, JWT auth, dual-input anti-idl
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19, Vite 8, Tailwind CSS 4 |
-| Backend | Node.js (raw `http.createServer`) |
-| Auth | Cookie-based pseudo-token, bcryptjs password hashing |
+| Backend | **None** — client talks directly to Firebase |
+| Auth | Firebase Authentication (Email/Password) |
+| Database | Cloud Firestore (real-time onSnapshot) |
+| Storage | Firebase Storage (file uploads) |
 | Icons | Lucide React |
-| Build | Vite (production build served by Node.js) |
-| Database | In-memory (resets on server restart) |
+| Hosting | Cloudflare Pages / Vite preview |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   CLIENT (React)                │
-│                                                 │
-│  ┌──────────┐  ┌───────────┐  ┌──────────────┐ │
-│  │ Dashboard │  │TaskExec   │  │ Admin Portal │ │
-│  │ MyTasks   │  │(Worker    │  │ Create Task  │ │
-│  │ Active    │  │ FullPage) │  │ Review Subs  │ │
-│  │ Completed │  │           │  │ Time Overview│ │
-│  └──────────┘  └───────────┘  └──────────────┘ │
-│        │              │              │           │
-│  ┌─────┴──────────────┴──────────────┴───────┐  │
-│  │           useTimeTracker (Hook)            │  │
-│  │  - Dual-input detection (kbd + mouse)     │  │
-│  │  - 8s idle cutoff                         │  │
-│  │  - Heartbeat to server every 5s           │  │
-│  └───────────────────┬───────────────────────┘  │
-│                      │                          │
-│  ┌───────────────────┴───────────────────────┐  │
-│  │              api.js (Fetch)               │  │
-│  │  - credentials: include (cookie auth)     │  │
-│  │  - All REST endpoints                     │  │
-│  └───────────────────┬───────────────────────┘  │
-└──────────────────────┼──────────────────────────┘
-                       │ HTTP
-┌──────────────────────┼──────────────────────────┐
-│                SERVER (Node.js)                  │
-│                      │                          │
-│  ┌───────────────────┴───────────────────────┐  │
-│  │          http.createServer()              │  │
-│  │  - Cookie parsing                         │  │
-│  │  - JSON body parsing                      │  │
-│  │  - CORS handling                          │  │
-│  │  - Static file serving (dist/)            │  │
-│  └───────────────────┬───────────────────────┘  │
-│                      │                          │
-│  ┌──────────┐ ┌──────────┐ ┌────────────────┐  │
-│  │ Auth     │ │ Tasks    │ │ Time Tracking  │  │
-│  │ /login   │ │ GET/POST │ │ /heartbeat     │  │
-│  │ /register│ │ /start   │ │ /breakdown     │  │
-│  │ /logout  │ │ /submit  │ │                │  │
-│  │ /me      │ │ /review  │ │                │  │
-│  └──────────┘ └──────────┘ └────────────────┘  │
-│                      │                          │
-│  ┌───────────────────┴───────────────────────┐  │
-│  │           In-Memory Data Store            │  │
-│  │  - USERS_DB (seeded users)                │  │
-│  │  - tasks[] (all tasks)                    │  │
-│  │  - timeStore{} (heartbeat tracking)       │  │
-│  │  - auditLog[] (audit trail)               │  │
-│  └───────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                 CLIENT (React SPA)                   │
+│                                                      │
+│  ┌──────────┐  ┌───────────┐  ┌──────────────────┐  │
+│  │ Dashboard │  │ TaskExec  │  │  Admin Portal    │  │
+│  │ MyTasks   │  │ (Worker   │  │  Create Task     │  │
+│  │ Active    │  │  FullPage)│  │  Review Subs     │  │
+│  │ Completed │  │           │  │  Time Overview   │  │
+│  └──────────┘  └───────────┘  └──────────────────┘  │
+│        │              │               │               │
+│  ┌─────┴──────────────┴───────────────┴──────────┐   │
+│  │           useTimeTracker (Hook)               │   │
+│  │  - Dual-input detection (kbd + mouse)         │   │
+│  │  - 8s idle cutoff                             │   │
+│  │  - Heartbeats to Firestore every 5s           │   │
+│  └───────────────────┬───────────────────────────┘   │
+│                      │                               │
+│  ┌───────────────────┴───────────────────────────┐   │
+│  │              api.js (Firestore SDK)           │   │
+│  │  - Real-time onSnapshot subscriptions         │   │
+│  │  - Offline persistence via IndexedDB          │   │
+│  └───────────────────┬───────────────────────────┘   │
+└──────────────────────┼───────────────────────────────┘
+                       │ Firebase SDK
+          ┌────────────┼────────────────┐
+          │            │                │
+   ┌──────┴──────┐ ┌──┴───────────┐ ┌──┴──────────┐
+   │ Firebase Auth│ │  Firestore  │ │   Firebase  │
+   │  (signIn,   │ │  (tasks,    │ │   Storage   │
+   │  signOut,   │ │  users,     │ │  (file      │
+   │  onAuth     │ │  timeLogs,  │ │   uploads)  │
+   │  State)     │ │  auditLogs) │ │             │
+   └─────────────┘ └──────────────┘ └─────────────┘
 ```
 
 ---
@@ -79,11 +62,10 @@ Production-ready React dashboard with API backend, JWT auth, dual-input anti-idl
 
 ### Authentication Flow
 1. User enters email/password on login page
-2. Server validates credentials with bcryptjs
-3. Server generates token (`tok_{userId}_{timestamp}`) and sets HttpOnly cookie
-4. Client stores user data in localStorage for session persistence
-5. All API requests include `credentials: 'include'` to send cookie
-6. Server extracts userId from token cookie on every request
+2. `signInWithEmailAndPassword()` from Firebase Auth SDK
+3. `onAuthStateChanged` listener fires with user object
+4. Client reads `users/{uid}` from Firestore to get role + profile
+5. All Firestore queries are scoped by the authenticated user
 
 ### Task Lifecycle
 ```
@@ -91,18 +73,16 @@ Not Started → (Worker clicks "Start") → In Progress → (Worker submits) →
                                                   ↘ (Admin rejects) → In Progress
 ```
 
-1. **Admin creates task** via Admin Portal form (title, project, type, priority, rate, assign to worker)
-2. **Worker sees task** in Dashboard/My Tasks (tasks assigned to them + unassigned tasks)
+1. **Admin creates task** via Admin Portal form → written to Firestore `tasks` collection
+2. **Worker sees task** in real-time via `onSnapshot` — no polling needed
 3. **Worker clicks "View Task"** → navigates to full Task Execution page
-4. **Worker clicks "Start Task"** → server records `startedAt` timestamp, status → "In Progress"
-5. **Client-side timer runs silently** (no UI shown to worker) — tracks active vs idle seconds
-6. **Worker enters deliverable** (code/text) and clicks "Submit Task"
+4. **Worker clicks "Start Task"** → Firestore records `startedAt` timestamp
+5. **Client-side timer runs silently** — tracks active vs idle seconds
+6. **Worker enters deliverable** and clicks "Submit Task"
 7. **Server calculates** `timeSpent = now - startedAt` and `idleTime = timeSpent - activeSecondsLogged`
-8. **Admin reviews** in Admin Portal — sees Active, Idle, Total, Efficiency%, Earnings
+8. **Admin reviews** — sees Active, Idle, Total, Efficiency%, Earnings
 
 ### Time Tracking (Dual-Input Anti-Idle)
-
-The timer uses **dual-input validation** to prevent idle time from being counted as work:
 
 | Input | What's Tracked |
 |-------|---------------|
@@ -113,7 +93,7 @@ The timer uses **dual-input validation** to prevent idle time from being counted
 - A second counts as **Active** only when BOTH keyboard AND mouse have activity within the last 8 seconds
 - If either input is idle for >8 seconds, that second counts as **Idle**
 - Tab switching auto-pauses the timer (via `visibilitychange` event)
-- Client sends heartbeat to server every 5 seconds for server-side tracking
+- Client writes heartbeat to Firestore every 5 seconds
 
 **What each role sees:**
 
@@ -125,36 +105,112 @@ The timer uses **dual-input validation** to prevent idle time from being counted
 | Efficiency % | ❌ Hidden | ✅ Shown with color bar |
 | Earnings | ✅ (Dashboard stat) | ✅ (per-task) |
 
-### API Endpoints
+---
 
-| Method | Endpoint | Auth | Role | Description |
-|--------|----------|------|------|-------------|
-| POST | `/api/auth/login` | No | Any | Login, returns token + cookie |
-| POST | `/api/auth/register` | No | Any | Register new worker |
-| POST | `/api/auth/logout` | No | Any | Clear token cookie |
-| GET | `/api/auth/me` | Cookie | Any | Get current user profile |
-| GET | `/api/tasks` | Cookie | Filtered | List tasks (admin=all, worker=assigned+unassigned) |
-| POST | `/api/tasks` | Cookie | Admin | Create new task |
-| DELETE | `/api/tasks/:id` | Cookie | Admin | Delete task |
-| PUT | `/api/tasks/:id/status` | Cookie | Owner | Update task status |
-| POST | `/api/tasks/:id/start` | Cookie | Worker | Start task (records startedAt) |
-| POST | `/api/tasks/:id/submit` | Cookie | Owner | Submit task with deliverables + time |
-| POST | `/api/tasks/:id/review` | Cookie | Admin | Approve or reject submission |
-| POST | `/api/time/heartbeat` | Cookie | Any | Send tracking heartbeat |
-| GET | `/api/time/breakdown` | Cookie | Any | Get time breakdown per task |
-| GET | `/api/workers` | Cookie | Admin | List all workers |
-| GET | `/api/audit` | Cookie | Admin | Get audit log |
-| GET | `/api/earnings` | Cookie | Any | Get user's rate |
+## Firebase Collections
+
+| Collection | Purpose |
+|------------|---------|
+| `users` | User profiles with role (`admin`/`worker`), email, name |
+| `tasks` | All tasks with status, assignedTo, submission, time data |
+| `timeLogs` | Heartbeat tracking logs (active/idle per second) |
+| `auditLogs` | Admin action audit trail |
 
 ---
 
-## Seeded Users
+## Setup & Configuration
 
-| Role | Email | Password | Name |
-|------|-------|----------|------|
-| Admin | `admin@corein.com` | `admin123` | Admin User |
-| Worker | `arjun@corein.com` | `worker123` | Arjun Patel |
-| Worker | `priya@corein.com` | `worker123` | Priya Sharma |
+### 1. Firebase Console Setup
+1. Create project `corein-portal` at https://console.firebase.google.com
+2. Enable **Authentication** → Email/Password
+3. Create **Firestore Database** (test mode, closest region)
+4. Enable **Storage** (test mode)
+5. Register web app → copy config
+
+### 2. Environment Variables
+Create `.env` in project root:
+```
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=corein-portal.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=corein-portal
+VITE_FIREBASE_STORAGE_BUCKET=corein-portal.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abc123
+```
+
+### 3. Firestore Security Rules
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+    match /tasks/{taskId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+    match /timeLogs/{logId} {
+      allow read, write: if request.auth != null;
+    }
+    match /auditLogs/{logId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+### 4. Composite Index
+Create index on `tasks` collection: `assignedTo` ASC + `createdAt` DESC
+
+### 5. Install & Run
+```bash
+npm install
+npm run dev        # Development server at http://localhost:5173
+npm run build      # Production build to dist/
+npm run preview    # Preview production build
+```
+
+---
+
+## How to Test
+
+### Step 1: Start Dev Server
+```bash
+npm run dev
+```
+
+### Step 2: Create Admin User
+1. Register via the app with any email (e.g. `admin@corein.com` / `admin123`)
+2. Go to **Firestore Console** → `users` collection → find the new doc
+3. Click **Edit** → change `role` from `"worker"` to `"admin"` → Save
+
+### Step 3: Test Admin Workflow
+1. Login as admin
+2. Go to **Admin Portal** → Create a task (assign to a worker)
+3. Go to **Dashboard** → verify the task appears
+4. Go to **Admin Portal** → **All Tasks — Time Overview** → verify new task listed
+
+### Step 4: Test Worker Workflow
+1. Logout → Login as the worker you assigned the task to
+2. Go to **Dashboard** → find the task
+3. Click **"View Task"** → full execution page opens
+4. Click **"Start Task"** → timer starts silently
+5. Type on keyboard + move mouse → "Active Time" counter increases
+6. Enter deliverable → Click **"Submit Task"**
+7. See **"Your Active Time: XX:XX:XX"** displayed
+
+### Step 5: Test Admin Review
+1. Logout → Login as admin
+2. Go to **Admin Portal** → **Submitted — Review** shows:
+   - Green box = Active Time
+   - Red box = Idle Time
+   - Gray box = Total Time
+   - Efficiency bar with percentage
+3. Click **Approve** or **Reject**
 
 ---
 
@@ -162,36 +218,26 @@ The timer uses **dual-input validation** to prevent idle time from being counted
 
 ```
 worker-portal-jul262026/
-├── server.js                    # Main Node.js server (all API routes)
-├── package.json                 # Dependencies and scripts
+├── package.json                 # Dependencies (firebase, react, lucide-react)
 ├── vite.config.js               # Vite configuration
 ├── index.html                   # HTML entry point
-├── .env                         # Environment variables
-├── server/
-│   ├── data/
-│   │   ├── tasks.js             # Task data (unused, alternative)
-│   │   └── users.js             # User data (unused, alternative)
-│   ├── middleware/
-│   │   └── auth.js              # JWT middleware (unused, alternative)
-│   └── routes/
-│       ├── auth.js              # Auth routes (unused, alternative)
-│       ├── tasks.js             # Task routes (unused, alternative)
-│       ├── time.js              # Time routes (unused, alternative)
-│       └── workers.js           # Worker routes (unused, alternative)
+├── .env                         # Firebase config (gitignored)
+├── .gitignore                   # Git ignore rules
 ├── src/
 │   ├── main.jsx                 # React entry point
-│   ├── App.jsx                  # Root component (routing, state, auth)
+│   ├── App.jsx                  # Root component (routing, auth, state)
 │   ├── index.css                # Tailwind CSS imports
+│   ├── firebase.js              # Firebase config, auth, db, storage exports
 │   ├── config/
-│   │   └── constants.js         # API URLs, task types, rates, keys
+│   │   └── constants.js         # Task types, rates, keys
 │   ├── hooks/
-│   │   ├── useAuth.js           # Authentication hook
+│   │   ├── useAuth.js           # Firebase Auth (onAuthStateChanged)
 │   │   ├── useDarkMode.js       # Dark mode toggle
 │   │   ├── useNotification.js   # Toast notifications
-│   │   ├── useTaskManager.js    # Task CRUD operations
-│   │   └── useTimeTracker.js    # Dual-input time tracking
+│   │   ├── useTaskManager.js    # Firestore real-time task subscriptions
+│   │   └── useTimeTracker.js    # Dual-input time tracking + Firestore heartbeats
 │   ├── utils/
-│   │   ├── api.js               # Fetch wrapper for all API calls
+│   │   ├── api.js               # All Firestore operations (CRUD, subscriptions)
 │   │   ├── formatters.js        # Time/date/earnings formatters
 │   │   ├── sanitize.js          # Input sanitization
 │   │   ├── storage.js           # LocalStorage helpers
@@ -207,12 +253,11 @@ worker-portal-jul262026/
 │   │   ├── tasks/
 │   │   │   ├── TaskCard.jsx     # Task list item
 │   │   │   ├── TaskCreateForm.jsx # Admin task creation form
-│   │   │   ├── TaskDetail.jsx   # Admin task detail modal
-│   │   │   ├── TaskExecution.jsx # Worker task execution page
+│   │   │   ├── TaskExecution.jsx  # Worker task execution page
 │   │   │   └── TaskSubmitModal.jsx # Task submission modal
 │   │   ├── tracker/
-│   │   │   ├── AntiIdleGuard.jsx # Anti-idle status panel (admin only)
-│   │   │   └── TrackerBanner.jsx # Active tracking banner (admin only)
+│   │   │   ├── AntiIdleGuard.jsx   # Anti-idle status panel (admin only)
+│   │   │   └── TrackerBanner.jsx   # Active tracking banner (admin only)
 │   │   ├── shared/
 │   │   │   ├── SearchBar.jsx    # Search input
 │   │   │   └── StatCard.jsx     # Dashboard stat card
@@ -225,9 +270,9 @@ worker-portal-jul262026/
 │       ├── MyTasks.jsx          # All tasks list
 │       ├── ActiveTasks.jsx      # In-progress tasks
 │       ├── CompletedTasks.jsx   # Completed tasks
-│       ├── AdminPortal.jsx      # Admin: create tasks, review, time overview
-│       ├── Workers.jsx          # Admin: worker list
-│       ├── AuditLog.jsx         # Admin: audit trail
+│       ├── AdminPortal.jsx      # Admin: create, review, time overview
+│       ├── Workers.jsx          # Admin: worker list (real-time)
+│       ├── AuditLog.jsx         # Admin: audit trail (real-time)
 │       ├── TimeTracker.jsx      # Time breakdown table
 │       ├── Earnings.jsx         # Earnings summary
 │       ├── Payouts.jsx          # Payout history
@@ -240,81 +285,14 @@ worker-portal-jul262026/
 
 ---
 
-## How to Test
+## Removed in v3.0
 
-### Step 1: Start the Server
-```bash
-cd worker-portal-jul262026
-npm install
-npm start
-```
-Server runs at **http://localhost:4000**
-
-### Step 2: Test Admin Workflow
-1. Open http://localhost:4000 in your browser
-2. Login as `admin@corein.com` / `admin123`
-3. Go to **Admin Portal** in the sidebar
-4. Create a task:
-   - Title: "Test Timer Task"
-   - Project: "QA Testing"
-   - Assign To: Select a worker from dropdown
-   - Click **Create Task**
-5. Go to **Dashboard** → verify the task appears
-6. Go to **Admin Portal** → **All Tasks — Time Overview** → verify the new task is listed
-
-### Step 3: Test Worker Workflow
-1. Logout (click logout icon in sidebar)
-2. Login as `arjun@corein.com` / `worker123`
-3. Go to **Dashboard** → find the task created by admin
-4. Click **"View Task"** → full execution page opens
-5. Click **"Start Task"** → status changes to "In Progress"
-6. **Test the timer:**
-   - Type on keyboard + move mouse → "Active Time" counter increases
-   - Stop moving mouse for 8+ seconds → counter pauses
-   - Move mouse again → counter resumes
-   - Switch browser tabs → auto-pauses
-7. Type something in the **Deliverable** text area
-8. Click **"Submit Task"**
-9. You should see **"Your Active Time: XX:XX:XX"** displayed
-10. Task status changes to "Submitted"
-
-### Step 4: Test Admin Review
-1. Logout, login as `admin@corein.com` / `admin123`
-2. Go to **Admin Portal**
-3. **Submitted — Review** section shows the submitted task with:
-   - Green box = Active Time
-   - Red box = Idle Time
-   - Gray box = Total Time
-   - Efficiency bar with percentage
-4. Click **Approve** or **Reject**
-5. Go to **Dashboard** → click the task title → modal shows Logged Time + Total Time Spent
-
-### Step 5: Verify via API (Optional)
-```powershell
-# Login as worker
-$body = '{"email":"arjun@corein.com","password":"worker123"}'
-$resp = Invoke-WebRequest -Uri http://localhost:4000/api/auth/login -Method POST -Body $body -ContentType 'application/json' -UseBasicParsing -SessionVariable ws
-
-# Check tasks
-Invoke-WebRequest -Uri http://localhost:4000/api/tasks -UseBasicParsing -WebSession $ws | Select-Object -ExpandProperty Content
-
-# Start a task
-Invoke-WebRequest -Uri http://localhost:4000/api/tasks/PY-001/start -Method POST -UseBasicParsing -WebSession $ws | Select-Object -ExpandProperty Content
-```
-
----
-
-## Bug Fixes Included
-
-| Bug | Root Cause | Fix |
-|-----|-----------|-----|
-| Worker can't see admin tasks | TaskCreateForm had no worker selector; filter was broken | Added worker dropdown + fixed server filter |
-| View Task opens modal only | No task execution page existed | Created TaskExecution.jsx full-page component |
-| Time tracker UI visible to workers | TrackerBanner/AntiIdleGuard shown to all | Hidden from workers, shown only to admin |
-| Admin can't see time breakdown | No active/idle/total time display | Added time overview table with efficiency |
-| Delete button on wrong role | `!isAdmin` check was inverted | Fixed to `isAdmin` |
-| No start task endpoint | Missing server-side start tracking | Added POST /api/tasks/:id/start |
-| No idle time calculation | Server only stored active time | Added idleTime = timeSpent - activeSecondsLogged |
+The following were removed during the Firebase migration:
+- `server.js` — Node.js backend (replaced by Firebase SDK)
+- `server/` directory — Express routes, middleware, in-memory data store
+- `bcryptjs` — password hashing (handled by Firebase Auth)
+- `jsonwebtoken` — JWT tokens (handled by Firebase Auth)
+- `cloudflared.exe` — binary committed to repo (now gitignored)
 
 ---
 
