@@ -30,11 +30,6 @@ export default function LoginPage({ onLogin, onSwitch, loading, error }) {
             {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}{loading ? 'Signing in...' : 'Sign In'}</button>
         </form>
         <div className="mt-6 text-center"><button onClick={onSwitch} className="text-sm text-blue-600 hover:text-blue-700 font-medium">Create new account</button></div>
-        <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-          <p className="text-[11px] text-slate-500 font-medium mb-1">Demo:</p>
-          <p className="text-[11px] text-slate-600 font-mono">Admin: admin@corein.com / admin123</p>
-          <p className="text-[11px] text-slate-600 font-mono">Worker: arjun@corein.com / worker123</p>
-        </div>
       </div>
     </div>
   );

@@ -1,14 +1,24 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export function useNotification() {
   const [notification, setNotification] = useState('');
+  const timerRef = useRef(null);
 
-  const show = useCallback((msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(''), 5000);
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  const clear = useCallback(() => setNotification(''), []);
+  const show = useCallback((msg) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setNotification(msg);
+    timerRef.current = setTimeout(() => { setNotification(''); timerRef.current = null; }, 5000);
+  }, []);
+
+  const clear = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setNotification('');
+    timerRef.current = null;
+  }, []);
 
   return { notification, show, clear };
 }

@@ -12,6 +12,7 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
   const lastKbTs = useRef(0);
   const lastMouseTs = useRef(0);
   const activeIdRef = useRef(activeTaskId);
+  const stateRef = useRef({ kb: false, m: false, dual: false });
   activeIdRef.current = activeTaskId;
 
   useEffect(() => {
@@ -19,6 +20,7 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
       setIsKeyboardActive(false);
       setIsMouseActive(false);
       setIsDualInputActive(false);
+      stateRef.current = { kb: false, m: false, dual: false };
       return;
     }
 
@@ -39,9 +41,9 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
       const mActive = mouseMs <= DUAL_IDLE_CUTOFF_MS;
       const dualActive = kbActive && mActive;
 
-      setIsKeyboardActive(kbActive);
-      setIsMouseActive(mActive);
-      setIsDualInputActive(dualActive);
+      if (kbActive !== stateRef.current.kb) { setIsKeyboardActive(kbActive); stateRef.current.kb = kbActive; }
+      if (mActive !== stateRef.current.m) { setIsMouseActive(mActive); stateRef.current.m = mActive; }
+      if (dualActive !== stateRef.current.dual) { setIsDualInputActive(dualActive); stateRef.current.dual = dualActive; }
 
       const cur = activeIdRef.current;
       if (cur) {
@@ -57,7 +59,7 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
       ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.removeEventListener(e, onMouse));
       clearInterval(interval);
     };
-  }, [isTracking, activeTaskId, isPaused]);
+  }, [isTracking, isPaused]);
 
   useEffect(() => {
     if (!isTracking || !activeTaskId || isPaused) return;

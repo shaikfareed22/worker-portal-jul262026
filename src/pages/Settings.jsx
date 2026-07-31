@@ -14,7 +14,7 @@ export default function SettingsPage({ darkMode, toggleDark, onClearData }) {
         <p className="text-xs text-slate-500">All data stored server-side via API</p>
         <button onClick={onClearData} className="mt-2 text-xs px-3 py-1.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition">Clear Local Cache</button>
       </div>
-      <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-sm font-semibold text-slate-900 dark:text-white mb-1">COREIN Portal v2.0.0</p><p className="text-xs text-slate-400">React + Vite + Tailwind + Express API</p></div>
+      <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-sm font-semibold text-slate-900 dark:text-white mb-1">COREIN Portal v3.0.0</p><p className="text-xs text-slate-400">React + Vite + Tailwind + Firebase</p></div>
     </div>
   );
 }

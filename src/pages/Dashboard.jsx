@@ -41,7 +41,7 @@ export default function Dashboard({ tasks, user, isAdmin, activeTaskId, isTracki
           <div className="flex space-x-6 border-b border-slate-100 dark:border-slate-700 mt-4 text-sm font-medium text-slate-500 overflow-x-auto">
             {['Active', 'In Progress', 'Submitted', 'Completed'].map((k) => {
               const is = taskFilter === k;
-              const cnt = tasks.filter((t) => k === 'Active' ? t.status !== 'Completed' && t.status !== 'Submitted' : t.status === k).length;
+              const cnt = safeTasks.filter((t) => k === 'Active' ? t.status !== 'Completed' && t.status !== 'Submitted' : t.status === k).length;
               return <button key={k} onClick={() => setTaskFilter(k)} className={`pb-3 transition relative whitespace-nowrap ${is ? 'text-blue-600 font-semibold' : 'hover:text-slate-800'}`}>{k} ({cnt}){is && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}</button>;
             })}
           </div>

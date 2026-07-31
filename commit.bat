@@ -1,1 +1,0 @@
-git add -A && git commit -m "fix: cors and api url for cloudflare deployment" && git push

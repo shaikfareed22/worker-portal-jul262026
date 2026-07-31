@@ -30,6 +30,7 @@ import Support from './pages/Support';
 import SettingsPage from './pages/Settings';
 
 import { clearStorage } from './utils/storage';
+import { formatSecondsToTime } from './utils/formatters';
 
 export default function App() {
   const { user, loading: authLoading, error: authError, login, register, logout, isAdmin, isWorker } = useAuth();
@@ -47,9 +48,9 @@ export default function App() {
   const [submittingTask, setSubmittingTask] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [executingTask, setExecutingTask] = useState(null);
-  const [confirmDlg, setConfirmDlg] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'danger' });
+  const [confirmDlg, setConfirmDlg] = useState({ isOpen: false, title: '', message: '', onConfirm: null, onCancel: null, variant: 'danger' });
 
-  const { taskActiveSeconds, setTaskActiveSeconds, taskTotalElapsed, setTaskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive } = useTimeTracker(activeTaskId, isTracking, isPaused);
+  const { taskActiveSeconds, taskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive } = useTimeTracker(activeTaskId, isTracking, isPaused);
 
   const safeTasks = Array.isArray(tasks) ? tasks : [];
   const myTasks = useMemo(() => isAdmin ? safeTasks : safeTasks.filter((t) => t.assignedTo === user?.id || !t.assignedTo), [safeTasks, isAdmin, user]);
@@ -84,20 +85,27 @@ export default function App() {
   }, [submitTask, activeTaskId, showNotif]);
 
   const handleCreateTask = useCallback(async (taskData) => {
-    await createTask(taskData);
-    showNotif('Task created!');
+    try {
+      await createTask(taskData);
+      showNotif('Task created!');
+    } catch (err) { showNotif('Failed to create task: ' + err.message); }
   }, [createTask, showNotif]);
 
   const handleReview = useCallback(async (taskId, status, comment) => {
-    await reviewTask(taskId, { status, comment });
-    showNotif(`Task ${status.toLowerCase()}.`);
+    try {
+      await reviewTask(taskId, { status, comment });
+      showNotif(`Task ${status.toLowerCase()}.`);
+    } catch (err) { showNotif('Review failed: ' + err.message); }
   }, [reviewTask, showNotif]);
 
   const handleDelete = useCallback((task) => {
     setConfirmDlg({
       isOpen: true, title: 'Delete Task', message: `Delete "${task.title}"?`, variant: 'danger',
-      onConfirm: async () => { await deleteTask(task.id); showNotif('Deleted.'); setConfirmDlg({ isOpen: false }); },
-      onCancel: () => setConfirmDlg({ isOpen: false }),
+      onConfirm: async () => {
+        try { await deleteTask(task.id); showNotif('Deleted.'); } catch (err) { showNotif('Delete failed: ' + err.message); }
+        setConfirmDlg((prev) => ({ ...prev, isOpen: false }));
+      },
+      onCancel: () => setConfirmDlg((prev) => ({ ...prev, isOpen: false })),
     });
   }, [deleteTask, showNotif]);
 
@@ -108,6 +116,17 @@ export default function App() {
       setExecutingTask(task);
     }
   }, [isAdmin]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/30 animate-pulse"><span className="text-white font-bold text-lg">CORE</span></div>
+          <p className="text-sm text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -120,6 +139,12 @@ export default function App() {
   }
 
   const pageProps = { tasks: myTasks, user, isAdmin, darkMode, activeTaskId, isTracking, taskActiveSeconds, taskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive, onStart: handleStart, onSubmit: handleOpenSubmit, onNavigate: setActiveNav };
+
+  const unauthorizedPages = ['Admin Portal', 'Workers', 'Audit Log'];
+  if (unauthorizedPages.includes(activeNav) && !isAdmin) {
+    setActiveNav('Dashboard');
+    return null;
+  }
 
   return (
     <ErrorBoundary>
@@ -138,7 +163,7 @@ export default function App() {
 
         {executingTask ? (
           <TaskExecution
-            task={tasks.find((t) => t.id === executingTask.id) || executingTask}
+            task={safeTasks.find((t) => t.id === executingTask.id) || executingTask}
             onStart={handleStart}
             onSubmit={handleSubmitConfirm}
             onBack={() => setExecutingTask(null)}
@@ -167,7 +192,7 @@ export default function App() {
       </Layout>
 
       {submittingTask && (
-        <TaskSubmitModal task={submittingTask} taskActiveSeconds={taskActiveSeconds} taskTotalElapsed={taskTotalElapsed} onSubmit={handleSubmitConfirm} onClose={() => setSubmittingTask(null)} />
+        <TaskSubmitModal task={submittingTask} taskActiveSeconds={taskActiveSeconds} taskTotalElapsed={taskTotalElapsed} onSubmit={handleSubmitConfirm} onClose={() => setSubmittingTask(null)} darkMode={darkMode} />
       )}
 
       {selectedTask && isAdmin && (
@@ -198,11 +223,4 @@ export default function App() {
       <ConfirmDialog {...confirmDlg} />
     </ErrorBoundary>
   );
-}
-
-function formatSecondsToTime(totalSecs = 0) {
-  const hrs = Math.floor(totalSecs / 3600);
-  const mins = Math.floor((totalSecs % 3600) / 60);
-  const secs = totalSecs % 60;
-  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }

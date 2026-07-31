@@ -25,7 +25,8 @@ export function removeFromStorage(key) {
 
 export function clearStorage() {
   try {
-    localStorage.clear();
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith('corein_'));
+    keys.forEach((k) => localStorage.removeItem(k));
   } catch {
     // Silently fail
   }
