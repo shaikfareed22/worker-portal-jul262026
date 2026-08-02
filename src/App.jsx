@@ -115,6 +115,7 @@ export default function App() {
 
   const handleStart = useCallback(async (task) => {
     if (activeTaskId && activeTaskId !== task.id) { showNotif('Complete current task first.'); return; }
+    if (task.status === 'In Progress' || task.status === 'Submitted' || task.status === 'Completed') { showNotif('This task cannot be started.'); return; }
     try {
       await startTask(task.id);
       setActiveTaskId(task.id);
@@ -172,13 +173,17 @@ export default function App() {
     if (isAdmin) {
       setSelectedTask(task);
     } else {
+      if (activeTaskId && activeTaskId !== task.id && task.status === 'Not Started') {
+        showNotif('Complete your current task first.');
+        return;
+      }
       setExecutingTask(task);
       if (task.status === 'In Progress') {
         setActiveTaskId(task.id);
         setIsTracking(true);
       }
     }
-  }, [isAdmin]);
+  }, [isAdmin, activeTaskId, showNotif]);
 
   if (authLoading) {
     return (
@@ -233,7 +238,7 @@ export default function App() {
         ) : (
           <>
             {activeNav === 'Dashboard' && <Dashboard {...pageProps} onView={handleViewTask} onNavigate={setActiveNav} activeTaskId={activeTaskId} searchQ={searchQ} setSearchQ={setSearchQ} taskFilter={taskFilter} setTaskFilter={setTaskFilter} />}
-            {activeNav === 'My Tasks' && <MyTasks tasks={myTasks} isAdmin={isAdmin} onView={handleViewTask} onDelete={handleDelete} darkMode={darkMode} />}
+            {activeNav === 'My Tasks' && <MyTasks tasks={myTasks} isAdmin={isAdmin} onView={handleViewTask} onDelete={handleDelete} darkMode={darkMode} activeTaskId={activeTaskId} />}
             {activeNav === 'Active Tasks' && <ActiveTasks tasks={myTasks} taskActiveSeconds={taskActiveSeconds} onSubmit={handleOpenSubmit} />}
             {activeNav === 'Completed Tasks' && <CompletedTasks tasks={myTasks} />}
             {activeNav === 'Admin Portal' && isAdmin && <AdminPortal tasks={tasks} onCreateTask={handleCreateTask} onReview={handleReview} darkMode={darkMode} />}

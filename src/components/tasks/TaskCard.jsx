@@ -13,7 +13,7 @@ export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSu
       <div className="flex items-start space-x-4">
         <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-xs bg-indigo-50 text-indigo-600 border border-indigo-200">{task.type}</div>
         <div className="space-y-1">
-          <h3 onClick={() => onView(task)} className="font-semibold text-slate-900 dark:text-white text-sm hover:text-blue-600 cursor-pointer">{task.title}</h3>
+          <h3 onClick={isLocked ? undefined : () => onView(task)} className={`font-semibold text-sm ${isLocked ? 'text-slate-400 cursor-not-allowed' : 'text-slate-900 dark:text-white hover:text-blue-600 cursor-pointer'}`}>{task.title}</h3>
           <p className="text-xs text-slate-500">Project: <span className="font-medium text-slate-700 dark:text-slate-300">{task.project}</span></p>
           <div className="flex items-center gap-2 pt-1 flex-wrap">
             <span className="text-[11px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-mono">{task.id}</span>
