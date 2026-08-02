@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
 import { DUAL_IDLE_CUTOFF_MS } from '../config/constants';
 
+const IDLE_THRESHOLD_MS = 20000;
+
 export function useTimeTracker(activeTaskId, isTracking, isPaused) {
   const [taskActiveSeconds, setTaskActiveSeconds] = useState({});
   const [taskTotalElapsed, setTaskTotalElapsed] = useState({});
@@ -9,10 +11,9 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
   const [isMouseActive, setIsMouseActive] = useState(false);
   const [isDualInputActive, setIsDualInputActive] = useState(false);
 
-  const lastKbTs = useRef(0);
-  const lastMouseTs = useRef(0);
+  const lastInputTs = useRef(0);
   const activeIdRef = useRef(activeTaskId);
-  const stateRef = useRef({ kb: false, m: false, dual: false });
+  const wasActiveRef = useRef(false);
   activeIdRef.current = activeTaskId;
 
   useEffect(() => {
@@ -20,43 +21,38 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
       setIsKeyboardActive(false);
       setIsMouseActive(false);
       setIsDualInputActive(false);
-      stateRef.current = { kb: false, m: false, dual: false };
+      wasActiveRef.current = false;
       return;
     }
 
-    const onKb = () => { lastKbTs.current = Date.now(); };
-    const onMouse = () => { lastMouseTs.current = Date.now(); };
+    const onAnyInput = () => { lastInputTs.current = Date.now(); };
 
-    ['keydown', 'keyup'].forEach((e) => window.addEventListener(e, onKb, { passive: true }));
-    ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.addEventListener(e, onMouse, { passive: true }));
+    ['keydown', 'keyup'].forEach((e) => window.addEventListener(e, onAnyInput, { passive: true }));
+    ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.addEventListener(e, onAnyInput, { passive: true }));
 
-    lastKbTs.current = Date.now();
-    lastMouseTs.current = Date.now();
+    lastInputTs.current = Date.now();
 
     const interval = setInterval(() => {
       const now = Date.now();
-      const kbMs = lastKbTs.current ? now - lastKbTs.current : 999999;
-      const mouseMs = lastMouseTs.current ? now - lastMouseTs.current : 999999;
-      const kbActive = kbMs <= DUAL_IDLE_CUTOFF_MS;
-      const mActive = mouseMs <= DUAL_IDLE_CUTOFF_MS;
-      const dualActive = kbActive && mActive;
+      const msSinceInput = lastInputTs.current ? now - lastInputTs.current : 999999;
+      const isActive = msSinceInput <= IDLE_THRESHOLD_MS;
 
-      if (kbActive !== stateRef.current.kb) { setIsKeyboardActive(kbActive); stateRef.current.kb = kbActive; }
-      if (mActive !== stateRef.current.m) { setIsMouseActive(mActive); stateRef.current.m = mActive; }
-      if (dualActive !== stateRef.current.dual) { setIsDualInputActive(dualActive); stateRef.current.dual = dualActive; }
+      setIsKeyboardActive(isActive);
+      setIsMouseActive(isActive);
+      setIsDualInputActive(isActive);
 
       const cur = activeIdRef.current;
       if (cur) {
-        if (dualActive) {
+        setTaskTotalElapsed((p) => ({ ...p, [cur]: (p[cur] || 0) + 1 }));
+        if (isActive) {
           setTaskActiveSeconds((p) => ({ ...p, [cur]: (p[cur] || 0) + 1 }));
         }
-        setTaskTotalElapsed((p) => ({ ...p, [cur]: (p[cur] || 0) + 1 }));
       }
     }, 1000);
 
     return () => {
-      ['keydown', 'keyup'].forEach((e) => window.removeEventListener(e, onKb));
-      ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.removeEventListener(e, onMouse));
+      ['keydown', 'keyup'].forEach((e) => window.removeEventListener(e, onAnyInput));
+      ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.removeEventListener(e, onAnyInput));
       clearInterval(interval);
     };
   }, [isTracking, isPaused]);
