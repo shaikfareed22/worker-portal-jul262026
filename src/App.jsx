@@ -52,6 +52,13 @@ export default function App() {
 
   const { taskActiveSeconds, taskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive } = useTimeTracker(activeTaskId, isTracking, isPaused);
 
+  React.useEffect(() => {
+    const unauthorizedPages = ['Admin Portal', 'Workers', 'Audit Log'];
+    if (unauthorizedPages.includes(activeNav) && !isAdmin) {
+      setActiveNav('Dashboard');
+    }
+  }, [activeNav, isAdmin]);
+
   const safeTasks = Array.isArray(tasks) ? tasks : [];
   const myTasks = useMemo(() => isAdmin ? safeTasks : safeTasks.filter((t) => t.assignedTo === user?.id || !t.assignedTo), [safeTasks, isAdmin, user]);
   const pendingCount = useMemo(() => (Array.isArray(myTasks) ? myTasks : []).filter((t) => t.status !== 'Completed' && t.status !== 'Submitted').length, [myTasks]);
@@ -139,12 +146,6 @@ export default function App() {
   }
 
   const pageProps = { tasks: myTasks, user, isAdmin, darkMode, activeTaskId, isTracking, taskActiveSeconds, taskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive, onStart: handleStart, onSubmit: handleOpenSubmit, onNavigate: setActiveNav };
-
-  const unauthorizedPages = ['Admin Portal', 'Workers', 'Audit Log'];
-  if (unauthorizedPages.includes(activeNav) && !isAdmin) {
-    setActiveNav('Dashboard');
-    return null;
-  }
 
   return (
     <ErrorBoundary>

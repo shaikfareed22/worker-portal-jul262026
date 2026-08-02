@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { LayoutDashboard, ListTodo, Activity, CheckCircle2, Clock, DollarSign, Wallet, FileText, UserCheck, HelpCircle, Settings, ShieldCheck, Users, ClipboardList, LogOut, X, Database } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Activity, CheckCircle2, Clock, DollarSign, Wallet, FileText, UserCheck, HelpCircle, Settings, ShieldCheck, Users, ClipboardList, LogOut, X, Database, Timer } from 'lucide-react';
 
 export default function Sidebar({ user, isAdmin, activeNav, setActiveNav, mobileOpen, setMobileOpen, onLogout, darkMode, taskCount }) {
   const navSections = useMemo(() => {
@@ -11,6 +11,7 @@ export default function Sidebar({ user, isAdmin, activeNav, setActiveNav, mobile
         { name: 'Completed Tasks', icon: CheckCircle2 },
       ]},
       { title: 'TIME & EARNINGS', items: [
+        { name: 'Time Tracker', icon: Timer },
         { name: 'Earnings', icon: DollarSign },
         { name: 'Payouts', icon: Wallet },
         { name: 'Invoices', icon: FileText },
