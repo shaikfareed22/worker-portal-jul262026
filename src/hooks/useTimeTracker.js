@@ -1,62 +1,196 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
-import { DUAL_IDLE_CUTOFF_MS } from '../config/constants';
 
-const IDLE_THRESHOLD_MS = 20000;
+const ACTIVE_THRESHOLD_MS = 10000;
+const KEYBOARD_DENSITY_MS = 30000;
+const MOUSE_JIGGLE_PX = 5;
+const PERSIST_INTERVAL_MS = 3000;
+const MAX_RESUME_GAP_S = 120;
+
+const STORAGE_KEY = 'corein_timer_state';
+
+function loadTimerState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function saveTimerState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+function clearTimerState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+}
 
 export function useTimeTracker(activeTaskId, isTracking, isPaused) {
-  const [taskActiveSeconds, setTaskActiveSeconds] = useState({});
-  const [taskTotalElapsed, setTaskTotalElapsed] = useState({});
+  const [taskActiveSeconds, setTaskActiveSeconds] = useState(() => {
+    const saved = loadTimerState();
+    return saved?.taskActiveSeconds || {};
+  });
+  const [taskTotalElapsed, setTaskTotalElapsed] = useState(() => {
+    const saved = loadTimerState();
+    return saved?.taskTotalElapsed || {};
+  });
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
   const [isMouseActive, setIsMouseActive] = useState(false);
   const [isDualInputActive, setIsDualInputActive] = useState(false);
 
-  const lastInputTs = useRef(0);
+  const lastKeyboardTs = useRef(0);
+  const lastMouseTs = useRef(0);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  const lastMeaningfulMouseTs = useRef(0);
   const activeIdRef = useRef(activeTaskId);
-  const wasActiveRef = useRef(false);
-  activeIdRef.current = activeTaskId;
+  const isTrackingRef = useRef(isTracking);
+  const isPausedRef = useRef(isPaused);
+  const restoredRef = useRef(false);
 
+  activeIdRef.current = activeTaskId;
+  isTrackingRef.current = isTracking;
+  isPausedRef.current = isPaused;
+
+  // Restore on mount
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const saved = loadTimerState();
+    if (saved && saved.isTracking && saved.activeTaskId) {
+      const gap = Math.floor((Date.now() - (saved.lastTimestamp || 0)) / 1000);
+      if (gap < MAX_RESUME_GAP_S && saved.activeTaskId) {
+        const cur = saved.activeTaskId;
+        setTaskActiveSeconds((p) => ({ ...p, [cur]: (p[cur] || 0) + gap }));
+        setTaskTotalElapsed((p) => ({ ...p, [cur]: (p[cur] || 0) + gap }));
+      }
+    }
+  }, []);
+
+  // Persist state
+  useEffect(() => {
+    if (!isTracking || !activeTaskId) return;
+    const iv = setInterval(() => {
+      saveTimerState({
+        activeTaskId,
+        taskActiveSeconds,
+        taskTotalElapsed,
+        isTracking: true,
+        lastTimestamp: Date.now(),
+      });
+    }, PERSIST_INTERVAL_MS);
+    return () => clearInterval(iv);
+  }, [isTracking, activeTaskId, taskActiveSeconds, taskTotalElapsed]);
+
+  // Main tracking effect
   useEffect(() => {
     if (!isTracking || !activeTaskId || isPaused) {
       setIsKeyboardActive(false);
       setIsMouseActive(false);
       setIsDualInputActive(false);
-      wasActiveRef.current = false;
+      if (!isTracking) clearTimerState();
       return;
     }
 
-    const onAnyInput = () => { lastInputTs.current = Date.now(); };
+    const onKey = (e) => {
+      if (!document.hasFocus()) return;
+      const target = e.target;
+      if (!target || !target.isConnected) return;
+      if (!document.body.contains(target)) return;
+      if (!target.getAttribute || target.getAttribute('data-deliverable') !== 'true') return;
+      lastKeyboardTs.current = Date.now();
+    };
 
-    ['keydown', 'keyup'].forEach((e) => window.addEventListener(e, onAnyInput, { passive: true }));
-    ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.addEventListener(e, onAnyInput, { passive: true }));
+    const onMouse = (e) => {
+      const now = Date.now();
+      const x = e.clientX || 0;
+      const y = e.clientY || 0;
+      const dx = x - lastMousePos.current.x;
+      const dy = y - lastMousePos.current.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      lastMousePos.current = { x, y };
 
-    lastInputTs.current = Date.now();
+      if (dist >= MOUSE_JIGGLE_PX) {
+        lastMeaningfulMouseTs.current = now;
+      }
+      lastMouseTs.current = now;
+    };
+
+    const onClick = () => {
+      lastMeaningfulMouseTs.current = Date.now();
+      lastMouseTs.current = Date.now();
+    };
+
+    const onScroll = () => {
+      lastMeaningfulMouseTs.current = Date.now();
+      lastMouseTs.current = Date.now();
+    };
+
+    const onPause = () => {
+      setIsKeyboardActive(false);
+      setIsMouseActive(false);
+      setIsDualInputActive(false);
+    };
+
+    ['keydown', 'keyup'].forEach((e) => window.addEventListener(e, onKey, { passive: true }));
+    ['mousemove', 'touchstart'].forEach((e) => window.addEventListener(e, onMouse, { passive: true }));
+    ['mousedown', 'click'].forEach((e) => window.addEventListener(e, onClick, { passive: true }));
+    ['scroll', 'wheel'].forEach((e) => window.addEventListener(e, onScroll, { passive: true }));
+    document.addEventListener('visibilitychange', onPause);
+    window.addEventListener('blur', onPause);
+
+    const now = Date.now();
+    lastKeyboardTs.current = now;
+    lastMouseTs.current = now;
+    lastMeaningfulMouseTs.current = now;
 
     const interval = setInterval(() => {
       const now = Date.now();
-      const msSinceInput = lastInputTs.current ? now - lastInputTs.current : 999999;
-      const isActive = msSinceInput <= IDLE_THRESHOLD_MS;
-
-      setIsKeyboardActive(isActive);
-      setIsMouseActive(isActive);
-      setIsDualInputActive(isActive);
-
       const cur = activeIdRef.current;
+
+      // Tab/window hidden = pause
+      if (document.hidden) {
+        setIsKeyboardActive(false);
+        setIsMouseActive(false);
+        setIsDualInputActive(false);
+        return;
+      }
+
+      // Keyboard activity (within 10s)
+      const kbActive = (now - lastKeyboardTs.current) <= ACTIVE_THRESHOLD_MS;
+
+      // Meaningful mouse activity (within 10s, distance >= 5px)
+      const mouseActive = (now - lastMeaningfulMouseTs.current) <= ACTIVE_THRESHOLD_MS;
+
+      // Keyboard density: must have typed within 30s to count as working
+      const kbRecent = (now - lastKeyboardTs.current) <= KEYBOARD_DENSITY_MS;
+
+      // Active = (any input) AND (keyboard recently used)
+      const active = (kbActive || mouseActive) && kbRecent;
+
+      setIsKeyboardActive(kbActive);
+      setIsMouseActive(mouseActive);
+      setIsDualInputActive(active);
+
       if (cur) {
         setTaskTotalElapsed((p) => ({ ...p, [cur]: (p[cur] || 0) + 1 }));
-        if (isActive) {
+        if (active) {
           setTaskActiveSeconds((p) => ({ ...p, [cur]: (p[cur] || 0) + 1 }));
         }
       }
     }, 1000);
 
     return () => {
-      ['keydown', 'keyup'].forEach((e) => window.removeEventListener(e, onAnyInput));
-      ['mousemove', 'mousedown', 'click', 'scroll', 'wheel', 'touchstart'].forEach((e) => window.removeEventListener(e, onAnyInput));
+      ['keydown', 'keyup'].forEach((e) => window.removeEventListener(e, onKey));
+      ['mousemove', 'touchstart'].forEach((e) => window.removeEventListener(e, onMouse));
+      ['mousedown', 'click'].forEach((e) => window.removeEventListener(e, onClick));
+      ['scroll', 'wheel'].forEach((e) => window.removeEventListener(e, onScroll));
+      document.removeEventListener('visibilitychange', onPause);
+      window.removeEventListener('blur', onPause);
       clearInterval(interval);
     };
-  }, [isTracking, isPaused]);
+  }, [isTracking, activeTaskId, isPaused]);
 
+  // Heartbeat
   useEffect(() => {
     if (!isTracking || !activeTaskId || isPaused) return;
     const iv = setInterval(async () => {

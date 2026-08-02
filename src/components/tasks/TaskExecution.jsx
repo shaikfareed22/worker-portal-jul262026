@@ -1,12 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, CheckCircle2, Upload, FileCode, Clock, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeft, Play, CheckCircle2, Upload, FileCode, Clock, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import { formatShortTime, formatDateTime } from '../../utils/formatters';
 
-export default function TaskExecution({ task, onStart, onSubmit, onBack, isTracking, taskActiveSeconds, darkMode }) {
-  const [code, setCode] = useState(task?.submittedCode || '');
+function loadDeliverable(taskId) {
+  try {
+    const raw = localStorage.getItem(`corein_deliverable_${taskId}`);
+    return raw || '';
+  } catch { return ''; }
+}
+
+function saveDeliverable(taskId, code) {
+  try {
+    if (code) localStorage.setItem(`corein_deliverable_${taskId}`, code);
+    else localStorage.removeItem(`corein_deliverable_${taskId}`);
+  } catch {}
+}
+
+function clearDeliverable(taskId) {
+  try { localStorage.removeItem(`corein_deliverable_${taskId}`); } catch {}
+}
+
+export default function TaskExecution({ task, onStart, onSubmit, onBack, onView, activeTaskId, isTracking, taskActiveSeconds, darkMode }) {
+  const [code, setCode] = useState(() => task ? loadDeliverable(task.id) : '');
   const [notes, setNotes] = useState(task?.submittedNotes || '');
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const codeRef = useRef(null);
+
+  const preventCopyPaste = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }, []);
+
+  const preventKeyShortcuts = useCallback((e) => {
+    if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (task) {
+      const saved = loadDeliverable(task.id);
+      if (saved) setCode(saved);
+      else setCode(task.submittedCode || '');
+    }
+  }, [task?.id]);
+
+  useEffect(() => {
+    if (task) saveDeliverable(task.id, code);
+  }, [code, task?.id]);
 
   if (!task) return null;
 
@@ -29,6 +74,7 @@ export default function TaskExecution({ task, onStart, onSubmit, onBack, isTrack
         activeSecondsLogged: activeSecs,
         loggedTime: formatShortTime(activeSecs),
       });
+      clearDeliverable(task.id);
     } catch {}
     setSubmitting(false);
   };
@@ -77,14 +123,26 @@ export default function TaskExecution({ task, onStart, onSubmit, onBack, isTrack
       </div>
 
       {task.status === 'Not Started' && (
-        <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-2xl border p-8 shadow-sm text-center`}>
-          <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Ready to Start?</h3>
-          <p className="text-sm text-slate-500 mb-6">Click the button below to start working on this task. Time tracking will begin automatically.</p>
-          <button onClick={handleStart} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center gap-2 mx-auto">
-            <Play className="w-5 h-5 fill-current" /> Start Task
-          </button>
-        </div>
+        activeTaskId && activeTaskId !== task.id ? (
+          <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-2xl border p-8 shadow-sm text-center`}>
+            <Lock className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Task Locked</h3>
+            <p className="text-sm text-slate-500 mb-2">You already have an active task running.</p>
+            <p className="text-xs text-slate-400 mb-6">Complete or submit your current task before starting a new one.</p>
+            <button onClick={onBack} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center gap-2 mx-auto">
+              <ArrowLeft className="w-4 h-4" /> Back to Tasks
+            </button>
+          </div>
+        ) : (
+          <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-2xl border p-8 shadow-sm text-center`}>
+            <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Ready to Start?</h3>
+            <p className="text-sm text-slate-500 mb-6">Click the button below to start working on this task. Time tracking will begin automatically.</p>
+            <button onClick={handleStart} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center gap-2 mx-auto">
+              <Play className="w-5 h-5 fill-current" /> Start Task
+            </button>
+          </div>
+        )
       )}
 
       {isActive && (
@@ -99,7 +157,7 @@ export default function TaskExecution({ task, onStart, onSubmit, onBack, isTrack
 
           <div>
             <label className="block text-xs font-bold text-slate-800 dark:text-white uppercase mb-2">Deliverable *</label>
-            <textarea rows={8} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste your code or deliverable here..." className="w-full px-4 py-3 bg-slate-900 text-emerald-400 font-mono text-sm rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            <textarea ref={codeRef} data-deliverable="true" rows={8} value={code} onChange={(e) => setCode(e.target.value)} onPaste={preventCopyPaste} onCut={preventCopyPaste} onCopy={preventCopyPaste} onKeyDown={preventKeyShortcuts} onContextMenu={preventCopyPaste} placeholder="Type your deliverable here (copy/paste is disabled)..." className="w-full px-4 py-3 bg-slate-900 text-emerald-400 font-mono text-sm rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
 
           <div>

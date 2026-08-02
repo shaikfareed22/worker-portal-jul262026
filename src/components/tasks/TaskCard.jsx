@@ -1,10 +1,11 @@
 import React from 'react';
-import { Play, CheckCircle2, Eye } from 'lucide-react';
+import { Play, CheckCircle2, Eye, Lock } from 'lucide-react';
 import { formatShortTime } from '../../utils/formatters';
 
 export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSubmit, onView, darkMode, activeSeconds, isAdmin }) {
   const tId = task.id;
   const isCurrentActive = activeTaskId === tId && isTracking;
+  const isLocked = !isAdmin && activeTaskId && activeTaskId !== tId && task.status === 'Not Started';
   const secs = activeSeconds || task.activeSecondsLogged || 0;
 
   return (
@@ -27,7 +28,11 @@ export default function TaskCard({ task, activeTaskId, isTracking, onStart, onSu
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${task.status === 'Submitted' || task.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{task.status}</span>
         {task.status !== 'Submitted' && task.status !== 'Completed' && (
           <>
-            {!isCurrentActive ? (
+            {isLocked ? (
+              <span className="text-xs px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-400 rounded-xl font-semibold flex items-center gap-1 cursor-not-allowed">
+                <Lock className="w-3.5 h-3.5" /><span>Locked</span>
+              </span>
+            ) : !isCurrentActive ? (
               <button onClick={() => onView(task)} className="text-xs px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center gap-1 shadow-sm transition">
                 <Eye className="w-3.5 h-3.5" /><span>View Task</span>
               </button>

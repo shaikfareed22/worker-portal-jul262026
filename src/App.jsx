@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useTaskManager } from './hooks/useTaskManager';
 import { useTimeTracker } from './hooks/useTimeTracker';
@@ -32,18 +32,36 @@ import SettingsPage from './pages/Settings';
 import { clearStorage } from './utils/storage';
 import { formatSecondsToTime } from './utils/formatters';
 
+function loadTimerState() {
+  try {
+    const raw = localStorage.getItem('corein_timer_state');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function loadExecState() {
+  try {
+    const raw = localStorage.getItem('corein_exec_task');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export default function App() {
   const { user, loading: authLoading, error: authError, login, register, logout, isAdmin, isWorker } = useAuth();
   const { tasks, loading: tasksLoading, createTask, updateStatus, startTask, submitTask, reviewTask, deleteTask } = useTaskManager();
   const { darkMode, toggle: toggleDark } = useDarkMode();
   const { notification, show: showNotif, clear: clearNotif } = useNotification();
 
+  const savedExec = useRef(loadExecState());
+  const savedTimer = useRef(loadTimerState());
+  const restoredRef = useRef(false);
+
   const [authView, setAuthView] = useState('login');
   const [activeNav, setActiveNav] = useState('Dashboard');
   const [taskFilter, setTaskFilter] = useState('Active');
   const [searchQ, setSearchQ] = useState('');
-  const [activeTaskId, setActiveTaskId] = useState(null);
-  const [isTracking, setIsTracking] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState(() => savedTimer.current?.isTracking ? savedTimer.current.activeTaskId : null);
+  const [isTracking, setIsTracking] = useState(() => savedTimer.current?.isTracking || false);
   const [isPaused, setIsPaused] = useState(false);
   const [submittingTask, setSubmittingTask] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -51,6 +69,37 @@ export default function App() {
   const [confirmDlg, setConfirmDlg] = useState({ isOpen: false, title: '', message: '', onConfirm: null, onCancel: null, variant: 'danger' });
 
   const { taskActiveSeconds, taskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive } = useTimeTracker(activeTaskId, isTracking, isPaused);
+
+  // Restore executing task after tasks load from Firestore
+  useEffect(() => {
+    if (restoredRef.current) return;
+    if (tasksLoading) return;
+    restoredRef.current = true;
+
+    const saved = savedExec.current;
+    const timer = savedTimer.current;
+    if (saved && timer?.isTracking && tasks.length > 0) {
+      const fresh = tasks.find((t) => t.id === saved.id);
+      if (fresh) {
+        setExecutingTask(fresh);
+        setActiveTaskId(saved.id);
+        setIsTracking(true);
+      }
+    } else if (saved && timer?.isTracking) {
+      setExecutingTask(saved);
+      setActiveTaskId(saved.id);
+      setIsTracking(true);
+    }
+  }, [tasksLoading, tasks]);
+
+  // Persist executing task to localStorage
+  useEffect(() => {
+    if (executingTask && isTracking) {
+      localStorage.setItem('corein_exec_task', JSON.stringify(executingTask));
+    } else if (!isTracking) {
+      localStorage.removeItem('corein_exec_task');
+    }
+  }, [executingTask, isTracking]);
 
   React.useEffect(() => {
     const unauthorizedPages = ['Admin Portal', 'Workers', 'Audit Log'];
@@ -71,6 +120,7 @@ export default function App() {
       setActiveTaskId(task.id);
       setIsTracking(true);
       setIsPaused(false);
+      setExecutingTask(task);
     } catch (err) { showNotif('Failed to start task: ' + err.message); }
   }, [activeTaskId, showNotif, startTask]);
 
@@ -88,6 +138,8 @@ export default function App() {
       setSubmittingTask(null);
       setExecutingTask(null);
       if (activeTaskId === taskId) { setActiveTaskId(null); setIsTracking(false); }
+      localStorage.removeItem('corein_exec_task');
+      localStorage.removeItem('corein_timer_state');
     } catch (err) { showNotif('Submission failed: ' + err.message); }
   }, [submitTask, activeTaskId, showNotif]);
 
@@ -121,6 +173,10 @@ export default function App() {
       setSelectedTask(task);
     } else {
       setExecutingTask(task);
+      if (task.status === 'In Progress') {
+        setActiveTaskId(task.id);
+        setIsTracking(true);
+      }
     }
   }, [isAdmin]);
 
@@ -167,14 +223,16 @@ export default function App() {
             task={safeTasks.find((t) => t.id === executingTask.id) || executingTask}
             onStart={handleStart}
             onSubmit={handleSubmitConfirm}
-            onBack={() => setExecutingTask(null)}
+            onBack={() => { setExecutingTask(null); }}
+            onView={handleViewTask}
+            activeTaskId={activeTaskId}
             isTracking={isTracking && activeTaskId === executingTask.id}
             taskActiveSeconds={taskActiveSeconds}
             darkMode={darkMode}
           />
         ) : (
           <>
-            {activeNav === 'Dashboard' && <Dashboard {...pageProps} onView={handleViewTask} onNavigate={setActiveNav} searchQ={searchQ} setSearchQ={setSearchQ} taskFilter={taskFilter} setTaskFilter={setTaskFilter} />}
+            {activeNav === 'Dashboard' && <Dashboard {...pageProps} onView={handleViewTask} onNavigate={setActiveNav} activeTaskId={activeTaskId} searchQ={searchQ} setSearchQ={setSearchQ} taskFilter={taskFilter} setTaskFilter={setTaskFilter} />}
             {activeNav === 'My Tasks' && <MyTasks tasks={myTasks} isAdmin={isAdmin} onView={handleViewTask} onDelete={handleDelete} darkMode={darkMode} />}
             {activeNav === 'Active Tasks' && <ActiveTasks tasks={myTasks} taskActiveSeconds={taskActiveSeconds} onSubmit={handleOpenSubmit} />}
             {activeNav === 'Completed Tasks' && <CompletedTasks tasks={myTasks} />}
