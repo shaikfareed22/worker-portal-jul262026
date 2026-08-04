@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { supabase } from '../supabase';
 import { api } from '../utils/api';
 
 export function useAuth() {
@@ -10,14 +8,32 @@ export function useAuth() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUser({ id: firebaseUser.uid, ...userDoc.data() });
+          let { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+          if (!data) {
+            const meta = session.user.user_metadata || {};
+            const { data: inserted } = await supabase.from('users').upsert({
+              id: session.user.id,
+              email: session.user.email,
+              full_name: meta.full_name || meta.name || session.user.email.split('@')[0],
+              role: meta.role || 'worker',
+              avatar: (meta.full_name || meta.name || 'U').charAt(0).toUpperCase(),
+            }, { onConflict: 'id' }).select().single();
+            data = inserted;
+          }
+          if (data) {
+            setUser({ id: session.user.id, ...data });
           } else {
-            setUser({ id: firebaseUser.uid, name: firebaseUser.displayName || 'User', email: firebaseUser.email, role: 'worker', avatar: 'U', rate: 20, joinedAt: new Date().toISOString().split('T')[0] });
+            setUser({
+              id: session.user.id,
+              name: session.user.user_metadata?.full_name || 'User',
+              email: session.user.email,
+              role: 'worker',
+              avatar: 'U',
+              hourly_rate: 20,
+            });
           }
         } catch {
           setUser(null);
@@ -27,7 +43,8 @@ export function useAuth() {
       }
       setLoading(false);
     });
-    return unsubscribe;
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -66,5 +83,9 @@ export function useAuth() {
     window.location.reload();
   }, []);
 
-  return { user, loading, error, login, register, logout, isAdmin: user?.role === 'admin', isWorker: user?.role === 'worker' };
+  return {
+    user, loading, error, login, register, logout,
+    isAdmin: user?.role === 'admin',
+    isWorker: user?.role === 'worker'
+  };
 }

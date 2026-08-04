@@ -14,6 +14,13 @@ export default function TaskSubmitModal({ task, taskActiveSeconds, taskTotalElap
   const activeSecs = taskActiveSeconds?.[task.id] || 0;
   const totalSecs = taskTotalElapsed?.[task.id] || 0;
 
+  const preventCopyPaste = (e) => { e.preventDefault(); };
+  const preventKeyShortcuts = (e) => {
+    if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+    }
+  };
+
   const handleSubmit = async () => {
     if (!code.trim()) return;
     setSubmitting(true);
@@ -55,7 +62,7 @@ export default function TaskSubmitModal({ task, taskActiveSeconds, taskTotalElap
           <div><span className="text-[11px] uppercase tracking-wider text-emerald-800 font-semibold block">Active Time</span><span className="text-2xl font-bold font-mono text-emerald-700">{formatShortTime(activeSecs)}</span></div>
           <div><span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">Idle (Unpaid)</span><span className="text-xl font-bold font-mono text-slate-700">{formatShortTime(Math.max(0, totalSecs - activeSecs))}</span></div>
         </div>
-        <div><label className="block text-xs font-bold text-slate-800 uppercase mb-1">Deliverable *</label><textarea rows={5} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste code..." className="w-full px-3 py-2 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" /></div>
+        <div><label className="block text-xs font-bold text-slate-800 uppercase mb-1">Deliverable *</label><textarea rows={5} value={code} onChange={(e) => setCode(e.target.value)} onPaste={preventCopyPaste} onCut={preventCopyPaste} onCopy={preventCopyPaste} onKeyDown={preventKeyShortcuts} onContextMenu={preventCopyPaste} data-deliverable="true" placeholder="Type your code..." className="w-full px-3 py-2 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" /></div>
         <div><label className="block text-xs font-bold text-slate-800 uppercase mb-1">Attach Files</label>
           <label className={`flex items-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition ${darkMode ? 'border-slate-600 hover:border-blue-500' : 'border-slate-300 hover:border-blue-400'}`}><Upload className="w-4 h-4 text-slate-400" /><span className="text-xs text-slate-500">Upload files (max 10MB, code/text only)</span><input type="file" multiple className="hidden" onChange={handleFileUpload} /></label>
           {fileError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileError}</p>}

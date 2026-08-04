@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
-import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '../supabase';
 
 export function useTaskManager() {
   const [tasks, setTasks] = useState([]);
@@ -11,23 +10,25 @@ export function useTaskManager() {
 
   useEffect(() => {
     let mounted = true;
-    const unsubscribeAuth = auth.onAuthStateChanged(async (u) => {
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
-      if (!u) {
+      if (!session?.user) {
         if (mounted) { setTasks([]); setLoading(false); }
         return;
       }
       try {
-        const userDoc = await getDoc(doc(db, 'users', u.uid));
-        const isAdmin = userDoc.exists() && userDoc.data().role === 'admin';
-        unsubRef.current = api.subscribeToTasks(u.uid, isAdmin, (t) => {
+        const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+        const admin = userData?.role === 'admin';
+        unsubRef.current = api.subscribeToTasks(session.user.id, admin, (t) => {
           if (mounted) { setTasks(t); setLoading(false); }
         });
       } catch (err) {
         if (mounted) { setError(err.message); setLoading(false); }
       }
     });
-    return () => { mounted = false; unsubscribeAuth(); if (unsubRef.current) unsubRef.current(); };
+
+    return () => { mounted = false; subscription.unsubscribe(); if (unsubRef.current) unsubRef.current(); };
   }, []);
 
   const createTask = async (taskData) => {

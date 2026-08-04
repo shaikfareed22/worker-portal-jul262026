@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
 import { Lock, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { validateEmail, validatePassword } from '../../utils/validators';
 
 export default function LoginPage({ onLogin, onSwitch, loading, error }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [fieldError, setFieldError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const emailErr = validateEmail(email);
+    if (emailErr) { setFieldError(emailErr); return; }
+    const pwErr = validatePassword(password);
+    if (pwErr) { setFieldError(pwErr); return; }
+    setFieldError('');
     onLogin(email, password);
   };
 
@@ -21,6 +28,7 @@ export default function LoginPage({ onLogin, onSwitch, loading, error }) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium">{error}</div>}
+          {fieldError && <div className="p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-xs font-medium">{fieldError}</div>}
           <div><label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Enter email" /></div>
           <div><label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>

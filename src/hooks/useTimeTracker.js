@@ -125,10 +125,21 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
       lastMouseTs.current = Date.now();
     };
 
+    const wasHidden = { current: document.hidden };
+
     const onPause = () => {
       setIsKeyboardActive(false);
       setIsMouseActive(false);
       setIsDualInputActive(false);
+      const cur = activeIdRef.current;
+      if (cur) {
+        if (document.hidden && !wasHidden.current) {
+          api.logTimerEvent(cur, 'tab_blur').catch(() => {});
+        } else if (!document.hidden && wasHidden.current) {
+          api.logTimerEvent(cur, 'tab_focus').catch(() => {});
+        }
+      }
+      wasHidden.current = document.hidden;
     };
 
     ['keydown', 'keyup'].forEach((e) => window.addEventListener(e, onKey, { passive: true }));
@@ -196,11 +207,39 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
     const iv = setInterval(async () => {
       try {
         const ts = Date.now();
+        const kbActive = (ts - lastKeyboardTs.current) <= ACTIVE_THRESHOLD_MS;
+        const mouseActive = (ts - lastMeaningfulMouseTs.current) <= ACTIVE_THRESHOLD_MS;
+        const eventType = kbActive ? 'keyboard' : mouseActive ? 'mouse' : 'idle_detected';
         const hash = `${activeTaskId}-${ts}`.slice(0, 16);
-        await api.sendHeartbeat(activeTaskId, ts, hash);
+        await api.sendHeartbeat(activeTaskId, ts, hash, eventType);
       } catch {}
     }, 5000);
     return () => clearInterval(iv);
+  }, [isTracking, activeTaskId, isPaused]);
+
+  // Periodic screenshot capture (every 60s)
+  useEffect(() => {
+    if (!isTracking || !activeTaskId || isPaused) return;
+    let cancelled = false;
+    const captureScreenshot = async () => {
+      if (cancelled || document.hidden) return;
+      try {
+        const html2canvas = (await import('html2canvas')).default;
+        const canvas = await html2canvas(document.body, {
+          logging: false,
+          useCORS: true,
+          scale: 0.5,
+          backgroundColor: null,
+        });
+        if (cancelled) return;
+        canvas.toBlob(async (blob) => {
+          if (cancelled || !blob) return;
+          await api.captureScreenshot(activeTaskId, blob);
+        }, 'image/png', 0.6);
+      } catch {}
+    };
+    const iv = setInterval(captureScreenshot, 60000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [isTracking, activeTaskId, isPaused]);
 
   return { taskActiveSeconds, setTaskActiveSeconds, taskTotalElapsed, setTaskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive };

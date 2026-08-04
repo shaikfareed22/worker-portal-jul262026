@@ -10,7 +10,9 @@
     "start": "vite build && vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
     "firebase": "^11.8.1",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^1.27.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
