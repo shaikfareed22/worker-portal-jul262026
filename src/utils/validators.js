@@ -1,10 +1,14 @@
 export function validateEmail(email) {
+  if (!email || typeof email !== 'string') return 'Email is required';
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
+  if (!re.test(email)) return 'Invalid email format';
+  return null;
 }
 
 export function validatePassword(password) {
-  return typeof password === 'string' && password.length >= 6;
+  if (!password || typeof password !== 'string') return 'Password is required';
+  if (password.length < 6) return 'Password must be at least 6 characters';
+  return null;
 }
 
 export function validateTaskInput(task) {

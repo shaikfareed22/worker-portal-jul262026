@@ -8,22 +8,27 @@ export function useAuth() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log('[AUTH] Setting up onAuthStateChange');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AUTH] onAuthStateChange event:', event, 'session:', !!session);
       if (session?.user) {
+        console.log('[AUTH] User ID:', session.user.id);
         try {
-          let { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+          let { data, error } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+          console.log('[AUTH] Users query result:', data, 'error:', error);
           if (!data) {
             const meta = session.user.user_metadata || {};
-            const { data: inserted } = await supabase.from('users').upsert({
+            const { data: inserted, error: insertErr } = await supabase.from('users').upsert({
               id: session.user.id,
               email: session.user.email,
               full_name: meta.full_name || meta.name || session.user.email.split('@')[0],
               role: meta.role || 'worker',
               avatar: (meta.full_name || meta.name || 'U').charAt(0).toUpperCase(),
             }, { onConflict: 'id' }).select().single();
+            console.log('[AUTH] Upsert result:', inserted, 'error:', insertErr);
             data = inserted;
           }
-          setUser({
+          const finalUser = {
             id: session.user.id,
             ...(data || {
               email: session.user.email,
@@ -32,8 +37,11 @@ export function useAuth() {
               avatar: 'U',
               hourly_rate: 25,
             }),
-          });
-        } catch {
+          };
+          console.log('[AUTH] Setting user:', finalUser.email, 'role:', finalUser.role);
+          setUser(finalUser);
+        } catch (err) {
+          console.error('[AUTH] Catch error:', err);
           setUser({
             id: session.user.id,
             email: session.user.email,
@@ -44,6 +52,7 @@ export function useAuth() {
           });
         }
       } else {
+        console.log('[AUTH] No session, setting user to null');
         setUser(null);
       }
       setLoading(false);
