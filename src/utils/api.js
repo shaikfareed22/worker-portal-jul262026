@@ -354,11 +354,15 @@ export const api = {
     if (!admin) {
       query = query.or(`assigned_to.eq.${userId},assigned_to.is.null`);
     }
+    const fetchTasks = async () => {
+      const { data } = await query;
+      callback((data || []).map(mapTask));
+    };
+    fetchTasks();
     const channel = supabase
       .channel('tasks-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
-        const { data } = await query;
-        callback((data || []).map(mapTask));
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchTasks();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
