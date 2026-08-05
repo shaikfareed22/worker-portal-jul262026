@@ -23,20 +23,25 @@ export function useAuth() {
             }, { onConflict: 'id' }).select().single();
             data = inserted;
           }
-          if (data) {
-            setUser({ id: session.user.id, ...data });
-          } else {
-            setUser({
-              id: session.user.id,
-              name: session.user.user_metadata?.full_name || 'User',
+          setUser({
+            id: session.user.id,
+            ...(data || {
               email: session.user.email,
+              full_name: session.user.user_metadata?.full_name || 'User',
               role: 'worker',
               avatar: 'U',
-              hourly_rate: 20,
-            });
-          }
+              hourly_rate: 25,
+            }),
+          });
         } catch {
-          setUser(null);
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name || 'User',
+            role: 'worker',
+            avatar: 'U',
+            hourly_rate: 25,
+          });
         }
       } else {
         setUser(null);

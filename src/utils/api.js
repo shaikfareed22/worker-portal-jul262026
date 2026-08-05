@@ -72,7 +72,28 @@ export const api = {
   login: async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    const { data: userData } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+    let { data: userData } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+    if (!userData) {
+      const meta = data.user.user_metadata || {};
+      const { data: inserted } = await supabase.from('users').upsert({
+        id: data.user.id,
+        email: data.user.email,
+        full_name: meta.full_name || data.user.email.split('@')[0],
+        role: meta.role || 'worker',
+        avatar: (meta.full_name || 'U').charAt(0).toUpperCase(),
+      }, { onConflict: 'id' }).select().single();
+      userData = inserted;
+    }
+    if (!userData) {
+      userData = {
+        id: data.user.id,
+        email: data.user.email,
+        full_name: data.user.email.split('@')[0],
+        role: 'worker',
+        avatar: 'U',
+        hourly_rate: 25,
+      };
+    }
     addAudit('login', `${email} signed in`, data.user.id);
     return { user: { id: data.user.id, ...userData } };
   },
