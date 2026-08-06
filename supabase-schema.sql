@@ -200,15 +200,15 @@
 
   CREATE POLICY "users_own_read" ON users FOR SELECT USING (auth.uid() = id);
   CREATE POLICY "users_own_update" ON users FOR UPDATE USING (auth.uid() = id);
-  CREATE POLICY "users_admin_all" ON users FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-  );
+  CREATE POLICY "users_own_insert" ON users FOR INSERT WITH CHECK (auth.uid() = id);
+  CREATE POLICY "users_select_all" ON users FOR SELECT USING (true);
+  CREATE POLICY "users_admin_all" ON users FOR ALL USING (id = auth.uid());
 
   CREATE POLICY "tasks_worker_read" ON tasks FOR SELECT USING (
     assigned_to = auth.uid() OR created_by = auth.uid() OR assigned_to IS NULL
   );
   CREATE POLICY "tasks_worker_update" ON tasks FOR UPDATE USING (
-    assigned_to = auth.uid() OR created_by = auth.uid()
+    assigned_to = auth.uid() OR created_by = auth.uid() OR assigned_to IS NULL
   );
   CREATE POLICY "tasks_admin_all" ON tasks FOR ALL USING (
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
