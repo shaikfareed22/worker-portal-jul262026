@@ -217,7 +217,7 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
     return () => clearInterval(iv);
   }, [isTracking, activeTaskId, isPaused]);
 
-  // Periodic screenshot capture (every 60s)
+  // Periodic screenshot capture (every 60s) + immediate on task start
   useEffect(() => {
     if (!isTracking || !activeTaskId || isPaused) return;
     let cancelled = false;
@@ -234,10 +234,19 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
         if (cancelled) return;
         canvas.toBlob(async (blob) => {
           if (cancelled || !blob) return;
-          await api.captureScreenshot(activeTaskId, blob);
+          try {
+            await api.captureScreenshot(activeTaskId, blob);
+          } catch (e) {
+            console.error('[Screenshot] Capture failed:', e);
+          }
         }, 'image/png', 0.6);
-      } catch {}
+      } catch (e) {
+        console.error('[Screenshot] html2canvas failed:', e);
+      }
     };
+    // Capture immediately on task start
+    captureScreenshot();
+    // Then every 60s
     const iv = setInterval(captureScreenshot, 60000);
     return () => { cancelled = true; clearInterval(iv); };
   }, [isTracking, activeTaskId, isPaused]);

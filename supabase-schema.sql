@@ -291,6 +291,24 @@
     FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
   -- ============================================
+  -- STORAGE POLICIES (task-files bucket)
+  -- ============================================
+  -- Allow authenticated users to upload files
+  CREATE POLICY "task_files_insert_auth" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'task-files');
+
+  -- Allow anyone to read files (public bucket)
+  CREATE POLICY "task_files_select_public" ON storage.objects
+    FOR SELECT TO public
+    USING (bucket_id = 'task-files');
+
+  -- Allow users to delete their own files
+  CREATE POLICY "task_files_delete_own" ON storage.objects
+    FOR DELETE TO authenticated
+    USING (bucket_id = 'task-files' AND (storage.foldername(name))[2] = auth.uid()::text);
+
+  -- ============================================
   -- AFTER CREATING ADMIN USER IN SUPABASE AUTH:
   -- ============================================
   -- UPDATE users SET role = 'admin' WHERE email = 'hello@corein.in';

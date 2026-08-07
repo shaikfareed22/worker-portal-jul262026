@@ -338,13 +338,17 @@ export const api = {
     const { error: uploadError } = await supabase.storage.from('task-files').upload(fileName, canvasBlob, {
       contentType: 'image/png',
     });
-    if (uploadError) return null;
+    if (uploadError) {
+      console.error('[Screenshot] Upload failed:', uploadError.message);
+      return null;
+    }
     const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(fileName);
-    await supabase.from('screenshots').insert({
+    const { error: dbError } = await supabase.from('screenshots').insert({
       user_id: user.id,
       task_id: taskId,
       storage_path: fileName,
     });
+    if (dbError) console.error('[Screenshot] DB insert failed:', dbError.message);
     addAudit('screenshot_captured', `Screenshot for task`, user.id, 'task', taskId);
     return urlData?.publicUrl || null;
   },
