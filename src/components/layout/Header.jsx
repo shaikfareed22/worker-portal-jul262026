@@ -10,36 +10,36 @@ export default function Header({ activeNav, darkMode, toggleDark, onMenuOpen, is
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-4 lg:px-8 py-4 flex items-center justify-between ${darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200/60'}`}>
+    <header className={`sticky top-0 z-30 border-b px-4 lg:px-8 py-4 flex items-center justify-between ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
       <div className="flex items-center space-x-3">
-        <button onClick={onMenuOpen} className="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"><Menu className="w-5 h-5" /></button>
+        <button onClick={onMenuOpen} className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100"><Menu className="w-6 h-6" /></button>
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className={`text-xl lg:text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>{activeNav}</h1>
-            {isAdmin && <span className="text-[10px] bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Admin</span>}
+            <h1 className={`text-xl lg:text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{activeNav}</h1>
+            {isAdmin && <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">ADMIN</span>}
           </div>
         </div>
       </div>
-      <div className="flex items-center space-x-2">
-        <button onClick={toggleDark} className={`p-2.5 rounded-xl transition ${darkMode ? 'text-slate-300 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-100'}`}>
-          {darkMode ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+      <div className="flex items-center space-x-3">
+        <button onClick={toggleDark} className={`p-2 rounded-lg transition ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+          {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
         <div className="relative">
-          <button onClick={() => setNotifOpen(!notifOpen)} className={`relative p-2.5 rounded-xl transition ${darkMode ? 'text-slate-300 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-100'}`}>
-            <Bell className="w-[18px] h-[18px]" />
-            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">{ANNOUNCEMENTS.length}</span>
+          <button onClick={() => setNotifOpen(!notifOpen)} className={`relative p-2 rounded-full transition ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">{ANNOUNCEMENTS.length}</span>
           </button>
           {notifOpen && (
-            <div className={`absolute right-0 mt-2 w-80 rounded-2xl shadow-2xl border py-2 z-50 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
-              <div className={`px-4 py-2.5 border-b flex justify-between items-center ${darkMode ? 'border-slate-700' : 'border-slate-100'}`}>
-                <span className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>Notifications</span>
-                <button onClick={() => setNotifOpen(false)} className="text-xs text-indigo-500 hover:text-indigo-600 font-medium">Close</button>
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50">
+              <div className="px-4 py-2 border-b border-slate-100 flex justify-between items-center">
+                <span className="font-semibold text-slate-800 text-sm">Notifications</span>
+                <button onClick={() => setNotifOpen(false)} className="text-xs text-blue-600 hover:underline">Close</button>
               </div>
-              <div className={`divide-y max-h-64 overflow-y-auto ${darkMode ? 'divide-slate-700' : 'divide-slate-100'}`}>
+              <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
                 {ANNOUNCEMENTS.map((a) => (
-                  <div key={a.id} className={`p-3 transition ${darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
-                    <p className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{a.title}</p>
-                    <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{a.desc}</p>
+                  <div key={a.id} className="p-3 hover:bg-slate-50 transition">
+                    <p className="text-xs font-semibold text-slate-800">{a.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{a.desc}</p>
                     <span className="text-[10px] text-slate-400 mt-1 block">{a.time}</span>
                   </div>
                 ))}
