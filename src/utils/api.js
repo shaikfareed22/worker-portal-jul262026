@@ -343,12 +343,18 @@ export const api = {
       return null;
     }
     const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(fileName);
-    const { error: dbError } = await supabase.from('screenshots').insert({
-      user_id: user.id,
-      task_id: taskId,
-      storage_path: fileName,
-    });
-    if (dbError) console.error('[Screenshot] DB insert failed:', dbError.message);
+    try {
+      const { error: dbError } = await supabase.from('screenshots').insert({
+        user_id: user.id,
+        task_id: taskId,
+        storage_path: fileName,
+      });
+      if (dbError) {
+        console.warn('[Screenshot] DB insert failed (Storage OK):', dbError.message);
+      }
+    } catch (e) {
+      console.warn('[Screenshot] DB insert exception:', e.message);
+    }
     addAudit('screenshot_captured', `Screenshot for task`, user.id, 'task', taskId);
     return urlData?.publicUrl || null;
   },
@@ -384,16 +390,46 @@ export const api = {
   },
 
   getScreenshotsByTask: async (taskId) => {
-    const { data, error } = await supabase
+    const { data: dbData, error: dbError } = await supabase
       .from('screenshots')
       .select('*')
       .eq('task_id', taskId)
       .order('captured_at', { ascending: true });
-    if (error) return [];
-    return (data || []).map((s) => {
-      const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(s.storage_path);
-      return { ...s, url: urlData?.publicUrl || null };
-    });
+    if (!dbError && dbData && dbData.length > 0) {
+      return dbData.map((s) => {
+        const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(s.storage_path);
+        return { ...s, url: urlData?.publicUrl || null };
+      });
+    }
+    // Fallback: list user folders inside taskId, then list files inside each
+    const { data: userFolders, error: folderError } = await supabase.storage.from('task-files').list(taskId);
+    if (folderError || !userFolders || userFolders.length === 0) {
+      console.warn('[Screenshot] No screenshots (DB:', dbError?.message, '| Storage:', folderError?.message, ')');
+      return [];
+    }
+    const allScreenshots = [];
+    for (const folder of userFolders) {
+      if (!folder.name || folder.name === '.emptyFolderPlaceholder') continue;
+      const subPath = `${taskId}/${folder.name}`;
+      const { data: files } = await supabase.storage.from('task-files').list(subPath);
+      if (!files) continue;
+      for (const f of files) {
+        if (!f.name.endsWith('_screenshot.png')) continue;
+        const fullPath = `${subPath}/${f.name}`;
+        const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(fullPath);
+        const ts = parseInt(f.name.split('_')[0]) || Date.now();
+        allScreenshots.push({
+          id: f.id || f.name,
+          task_id: taskId,
+          user_id: folder.name,
+          storage_path: fullPath,
+          captured_at: new Date(ts).toISOString(),
+          url: urlData?.publicUrl || null,
+        });
+      }
+    }
+    allScreenshots.sort((a, b) => new Date(a.captured_at) - new Date(b.captured_at));
+    return allScreenshots;
   },
 
   subscribeToAuditLog: (callback) => {
