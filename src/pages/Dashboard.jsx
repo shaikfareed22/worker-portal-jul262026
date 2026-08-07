@@ -24,29 +24,41 @@ export default function Dashboard({ tasks, user, isAdmin, activeTaskId, isTracki
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label="Active Tasks" value={pending} icon={ListTodo} iconBg="bg-blue-50" iconColor="text-blue-600" darkMode={darkMode} />
-        <StatCard label="Active Input" value={formatShortTime(totalActSecs)} icon={Clock} iconBg="bg-emerald-50" iconColor="text-emerald-600" darkMode={darkMode} />
-        <StatCard label="Earnings" value={`$${totalEarn}`} icon={Wallet} iconBg="bg-purple-50" iconColor="text-purple-600" darkMode={darkMode} />
+        <StatCard label="Active Tasks" value={pending} icon={ListTodo} iconBg="bg-indigo-500/10" iconColor="text-indigo-500" darkMode={darkMode} />
+        <StatCard label="Active Input" value={formatShortTime(totalActSecs)} icon={Clock} iconBg="bg-emerald-500/10" iconColor="text-emerald-500" darkMode={darkMode} />
+        <StatCard label="Earnings" value={`$${totalEarn}`} icon={Wallet} iconBg="bg-purple-500/10" iconColor="text-purple-500" darkMode={darkMode} />
       </div>
 
       <div className="mt-6">
-        <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-2xl border p-6 shadow-sm`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700 gap-3">
-            <div><h2 className="text-lg font-bold text-slate-900 dark:text-white">Task Center</h2><p className="text-xs text-slate-500">{isAdmin ? 'Manage and monitor tasks' : 'Click a task to start working'}</p></div>
+        <div className={`${darkMode ? 'bg-white/[0.03] border-white/5' : 'bg-white border-slate-200/60'} rounded-2xl border p-6 backdrop-blur-sm`}>
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b gap-3 ${darkMode ? 'border-white/5' : 'border-slate-100'}`}>
+            <div>
+              <h2 className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>Task Center</h2>
+              <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{isAdmin ? 'Manage and monitor tasks' : 'Click a task to start working'}</p>
+            </div>
             <div className="flex items-center gap-2">
               <SearchBar value={searchQ} onChange={setSearchQ} />
-              <button onClick={() => onNavigate('My Tasks')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"><span>View All</span></button>
+              <button onClick={() => onNavigate('My Tasks')} className="text-sm font-semibold text-indigo-500 hover:text-indigo-400 flex items-center gap-1 transition">
+                <span>View All</span>
+              </button>
             </div>
           </div>
-          <div className="flex space-x-6 border-b border-slate-100 dark:border-slate-700 mt-4 text-sm font-medium text-slate-500 overflow-x-auto">
+          <div className={`flex space-x-6 border-b mt-4 text-sm font-medium overflow-x-auto ${darkMode ? 'border-white/5 text-slate-500' : 'border-slate-100 text-slate-400'}`}>
             {['Active', 'In Progress', 'Submitted', 'Completed'].map((k) => {
               const is = taskFilter === k;
               const cnt = safeTasks.filter((t) => k === 'Active' ? t.status !== 'Completed' && t.status !== 'Submitted' : t.status === k).length;
-              return <button key={k} onClick={() => setTaskFilter(k)} className={`pb-3 transition relative whitespace-nowrap ${is ? 'text-blue-600 font-semibold' : 'hover:text-slate-800'}`}>{k} ({cnt}){is && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}</button>;
+              return (
+                <button key={k} onClick={() => setTaskFilter(k)} className={`pb-3 transition relative whitespace-nowrap ${is ? 'text-indigo-500 font-semibold' : darkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
+                  {k} ({cnt})
+                  {is && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" />}
+                </button>
+              );
             })}
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-700 mt-2">
-            {filteredTasks.length === 0 ? <div className="p-8 text-center text-slate-400 text-sm">No tasks found.</div> : filteredTasks.map((task) => (
+          <div className={`divide-y mt-2 ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
+            {filteredTasks.length === 0 ? (
+              <div className={`p-8 text-center text-sm ${darkMode ? 'text-slate-600' : 'text-slate-400'}`}>No tasks found.</div>
+            ) : filteredTasks.map((task) => (
               <TaskCard key={task.id} task={task} activeTaskId={activeTaskId} isTracking={isTracking} onStart={onStart} onSubmit={onSubmit} onView={onView} darkMode={darkMode} activeSeconds={taskActiveSeconds[task.id]} isAdmin={isAdmin} />
             ))}
           </div>
