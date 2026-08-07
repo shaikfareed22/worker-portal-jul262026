@@ -140,7 +140,7 @@ export default function AdminPortal({ tasks, onCreateTask, onReview, darkMode })
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>{screenshotIdx + 1} of {screenshots.length}</span>
-                  <span>{screenshots[screenshotIdx]?.created_at ? new Date(screenshots[screenshotIdx].created_at).toLocaleString() : ''}</span>
+                  <span>{screenshots[screenshotIdx]?.captured_at ? new Date(screenshots[screenshotIdx].captured_at).toLocaleString() : ''}</span>
                 </div>
                 {screenshots.length > 1 && (
                   <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">

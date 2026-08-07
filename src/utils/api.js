@@ -384,7 +384,7 @@ export const api = {
       .from('screenshots')
       .select('*')
       .eq('task_id', taskId)
-      .order('created_at', { ascending: true });
+      .order('captured_at', { ascending: true });
     if (error) return [];
     return (data || []).map((s) => {
       const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(s.storage_path);
