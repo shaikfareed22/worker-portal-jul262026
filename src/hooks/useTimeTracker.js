@@ -225,11 +225,34 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
       if (cancelled || document.hidden) return;
       try {
         const html2canvas = (await import('html2canvas')).default;
-        const canvas = await html2canvas(document.body, {
+        const el = document.getElementById('root') || document.body;
+        const canvas = await html2canvas(el, {
           logging: false,
           useCORS: true,
           scale: 0.5,
-          backgroundColor: null,
+          backgroundColor: '#ffffff',
+          onclone: (doc) => {
+            const sheets = doc.styleSheets;
+            for (let i = 0; i < sheets.length; i++) {
+              try {
+                const rules = sheets[i].cssRules;
+                for (let j = rules.length - 1; j >= 0; j--) {
+                  if (rules[j].cssText && rules[j].cssText.includes('oklch')) {
+                    rules[j].parentStyleSheet.deleteRule(j);
+                  }
+                }
+              } catch {}
+            }
+            doc.querySelectorAll('*').forEach((el) => {
+              const s = el.style;
+              for (let i = s.length - 1; i >= 0; i--) {
+                const val = s.getPropertyValue(s[i]);
+                if (val && val.includes('oklch')) {
+                  s.removeProperty(s[i]);
+                }
+              }
+            });
+          },
         });
         if (cancelled) return;
         canvas.toBlob(async (blob) => {
@@ -237,18 +260,16 @@ export function useTimeTracker(activeTaskId, isTracking, isPaused) {
           try {
             await api.captureScreenshot(activeTaskId, blob);
           } catch (e) {
-            console.error('[Screenshot] Capture failed:', e);
+            console.error('[Screenshot] Upload failed:', e);
           }
         }, 'image/png', 0.6);
       } catch (e) {
-        console.error('[Screenshot] html2canvas failed:', e);
+        console.error('[Screenshot] Capture failed:', e);
       }
     };
-    // Capture immediately on task start
-    captureScreenshot();
-    // Then every 60s
+    const t = setTimeout(captureScreenshot, 2000);
     const iv = setInterval(captureScreenshot, 60000);
-    return () => { cancelled = true; clearInterval(iv); };
+    return () => { cancelled = true; clearTimeout(t); clearInterval(iv); };
   }, [isTracking, activeTaskId, isPaused]);
 
   return { taskActiveSeconds, setTaskActiveSeconds, taskTotalElapsed, setTaskTotalElapsed, isKeyboardActive, isMouseActive, isDualInputActive };
