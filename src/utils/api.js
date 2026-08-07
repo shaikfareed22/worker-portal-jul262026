@@ -390,33 +390,19 @@ export const api = {
   },
 
   getScreenshotsByTask: async (taskId) => {
-    console.log('[Screenshot] Looking for screenshots for task:', taskId);
     const { data: dbData, error: dbError } = await supabase
       .from('screenshots')
       .select('*')
       .eq('task_id', taskId)
       .order('captured_at', { ascending: true });
     if (!dbError && dbData && dbData.length > 0) {
-      console.log('[Screenshot] Found', dbData.length, 'in DB');
       return dbData.map((s) => {
         const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(s.storage_path);
         return { ...s, url: urlData?.publicUrl || null };
       });
     }
-    console.log('[Screenshot] DB empty, trying Storage.list for:', taskId);
     const { data: userFolders, error: folderError } = await supabase.storage.from('task-files').list(taskId);
-    console.log('[Screenshot] Storage result:', userFolders?.length, 'folders,', folderError?.message || 'no error');
-    if (userFolders && userFolders.length > 0) {
-      console.log('[Screenshot] Folders found:', userFolders.map(f => f.name));
-    }
-    if (folderError || !userFolders || userFolders.length === 0) {
-      // Last resort: list root to see all task folders
-      console.log('[Screenshot] Listing bucket root to find task folders...');
-      const { data: rootFolders } = await supabase.storage.from('task-files').list('', { limit: 50 });
-      console.log('[Screenshot] Root folders:', rootFolders?.map(f => f.name));
-      console.warn('[Screenshot] No screenshots for task:', taskId, '(DB:', dbError?.message, '| Storage:', folderError?.message, ')');
-      return [];
-    }
+    if (folderError || !userFolders || userFolders.length === 0) return [];
     const allScreenshots = [];
     for (const folder of userFolders) {
       if (!folder.name || folder.name === '.emptyFolderPlaceholder') continue;
@@ -440,19 +426,6 @@ export const api = {
     }
     allScreenshots.sort((a, b) => new Date(a.captured_at) - new Date(b.captured_at));
     return allScreenshots;
-  },
-
-  listAllScreenshots: async () => {
-    const { data: rootFolders, error } = await supabase.storage.from('task-files').list('', { limit: 100 });
-    console.log('[Screenshot] Bucket root:', rootFolders?.length, 'items,', error?.message || 'ok');
-    if (rootFolders) {
-      for (const f of rootFolders) {
-        if (f.name === '.emptyFolderPlaceholder') continue;
-        const { data: sub } = await supabase.storage.from('task-files').list(f.name, { limit: 100 });
-        console.log('[Screenshot]  ', f.name, '->', sub?.map(s => s.name).join(', '));
-      }
-    }
-    return rootFolders;
   },
 
   subscribeToAuditLog: (callback) => {
