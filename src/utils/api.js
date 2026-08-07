@@ -379,6 +379,19 @@ export const api = {
     return () => { supabase.removeChannel(channel); };
   },
 
+  getScreenshotsByTask: async (taskId) => {
+    const { data, error } = await supabase
+      .from('screenshots')
+      .select('*')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: true });
+    if (error) return [];
+    return (data || []).map((s) => {
+      const { data: urlData } = supabase.storage.from('task-files').getPublicUrl(s.storage_path);
+      return { ...s, url: urlData?.publicUrl || null };
+    });
+  },
+
   subscribeToAuditLog: (callback) => {
     const channel = supabase
       .channel('audit-changes')
